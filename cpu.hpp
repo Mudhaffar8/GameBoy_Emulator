@@ -23,6 +23,7 @@ struct RegPair
 
     RegPair() : r16(0) {}
     RegPair(uint16_t _r16) : r16(_r16) {}
+    RegPair(uint8_t _low, uint8_t _high) : low(_low), high(_high) {}
 };
 
 class Cpu
@@ -78,6 +79,8 @@ private:
     inline bool check_half_borrow(uint8_t n1, uint8_t n2);
 
     bool check_condition_code(uint8_t cond);
+    uint8_t get_reg(uint8_t index);
+    uint8_t& get_reg_ref(uint8_t index);
 
     uint16_t read_next16();
 

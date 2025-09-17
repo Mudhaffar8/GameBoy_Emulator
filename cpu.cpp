@@ -137,6 +137,50 @@ bool Cpu::check_condition_code(uint8_t cond)
     return false;
 }
 
+uint8_t Cpu::get_reg(uint8_t index)
+{
+    switch (index)
+    {
+    case 0:
+        return BC.high;
+    case 1:
+        return BC.low;
+    case 2:
+        return DE.high;
+    case 3:
+        return DE.low;
+    case 4:
+        return HL.high;
+    case 5:
+        return HL.low;  
+    case 6:
+        return mem->read_byte(HL.r16);
+    case 7:
+        return AF.high;
+    }
+}
+
+uint8_t& Cpu::get_reg_ref(uint8_t index)
+{
+    switch (index)
+    {
+    case 0:
+        return BC.high;
+    case 1:
+        return BC.low;
+    case 2:
+        return DE.high;
+    case 3:
+        return DE.low;
+    case 4:
+        return HL.high;
+    case 5:
+        return HL.low;   
+    case 7:
+        return AF.high;
+    }
+}
+
 void Cpu::execute_instruction()
 {
     if (is_halted) return;
@@ -605,6 +649,246 @@ void Cpu::execute_instruction()
         BC.low = A;
         break;
 
+    // LD D, B
+    case 0x50:
+        DE.high = BC.high;
+        break;
+    
+    // LD D, C
+    case 0x51:
+        DE.high = BC.low;
+        break;
+
+    // LD D, D
+    case 0x52:
+        DE.high = DE.high;
+        break;
+    
+    // LD D, E
+    case 0x53:
+        DE.high = DE.low;
+        break;
+    
+    // LD D, H
+    case 0x54:
+        DE.high = HL.high;
+        break;
+    
+    // LD D, L
+    case 0x55:
+        DE.high = HL.low;
+        break;
+
+    // LD D, [HL]
+    case 0x56:
+        DE.high = mem->read_byte(HL.r16);
+        break;
+    
+    // LD D, A
+    case 0x57:
+        DE.high = A;
+        break;
+
+    // LD E, B
+    case 0x58:
+        DE.low = BC.high;
+        break;
+    
+    // LD C, C
+    case 0x59:
+        BC.low = BC.low;
+        break;
+
+    // LD C, D
+    case 0x5A:
+        BC.low = DE.high;
+        break;
+    
+    // LD C, E
+    case 0x5B:
+        BC.low = DE.low;
+        break;
+    
+    // LD C, H
+    case 0x5C:
+        BC.low = HL.high;
+        break;
+    
+    // LD C, L
+    case 0x5D:
+        BC.low = HL.low;
+        break;
+
+    // LD C, [HL]
+    case 0x5E:
+        BC.low = mem->read_byte(HL.r16);
+        break;
+    
+    // LD C, A
+    case 0x5F:
+        BC.low = A;
+        break;
+
+    // LD H, B
+    case 0x60:
+        HL.high = BC.high;
+        break;
+    
+    // LD H, C
+    case 0x61:
+        HL.high = BC.low;
+        break;
+
+    // LD H, D
+    case 0x62:
+        HL.high = DE.high;
+        break;
+    
+    // LD H, E
+    case 0x63:
+        HL.high = DE.low;
+        break;
+    
+    // LD H, H
+    case 0x64:
+        HL.high = HL.high;
+        break;
+    
+    // LD HL, L
+    case 0x65:
+        HL.high = HL.low;
+        break;
+
+    // lD
+    case 0x66:
+        HL.high = mem->read_byte(HL.r16);
+        break;
+    
+    // LD H, A
+    case 0x67:
+        HL.high = A;
+        break;
+
+    // LD L, B
+    case 0x68:
+        HL.low = BC.high;
+        break;
+    
+    // LD L, C
+    case 0x69:
+        HL.low = BC.low;
+        break;
+
+    // LD L, D
+    case 0x6A:
+        HL.low = DE.high;
+        break;
+    
+    // LD L, E
+    case 0x6B:
+        HL.low = DE.low;
+        break;
+    
+    // LD L, H
+    case 0x6C:
+        HL.low = HL.high;
+        break;
+    
+    // LD L, L
+    case 0x6D:
+        HL.low = HL.low;
+        break;
+
+    // LD L, [HL]
+    case 0x6E:
+        HL.low = mem->read_byte(HL.r16);
+        break;
+    
+    // LD L, A
+    case 0x6F:
+        HL.low = A;
+        break;
+
+    // LD D, B
+    case 0x70:
+        DE.high = BC.high;
+        break;
+    
+    // LD D, C
+    case 0x71:
+        DE.high = BC.low;
+        break;
+
+    // LD D, D
+    case 0x72:
+        DE.high = DE.high;
+        break;
+    
+    // LD D, E
+    case 0x73:
+        DE.high = DE.low;
+        break;
+    
+    // LD D, H
+    case 0x74:
+        DE.high = HL.high;
+        break;
+    
+    // LD D, L
+    case 0x75:
+        DE.high = HL.low;
+        break;
+
+    // LD D, [HL]
+    case 0x76:
+        DE.high = mem->read_byte(HL.r16);
+        break;
+    
+    // LD D, A
+    case 0x77:
+        DE.high = A;
+        break;
+
+    // LD E, B
+    case 0x78:
+        DE.low = BC.high;
+        break;
+    
+    // LD C, C
+    case 0x79:
+        BC.low = BC.low;
+        break;
+
+    // LD C, D
+    case 0x7A:
+        BC.low = DE.high;
+        break;
+    
+    // LD C, E
+    case 0x7B:
+        BC.low = DE.low;
+        break;
+    
+    // LD C, H
+    case 0x7C:
+        BC.low = HL.high;
+        break;
+    
+    // LD C, L
+    case 0x7D:
+        BC.low = HL.low;
+        break;
+
+    // LD C, [HL]
+    case 0x7E:
+        BC.low = mem->read_byte(HL.r16);
+        break;
+    
+    // LD C, A
+    case 0x7F:
+        BC.low = A;
+        break;
+
     default:
         break;
     }
@@ -642,9 +926,6 @@ void Cpu::adc_a(uint8_t reg8)
 }
 
 
-// (Checked) 0b10000xxx -> xxx = register
-// -> 1 cycle
-// -> 1 byte
 void Cpu::add_a(uint8_t reg8)
 {
     set_flag(Flags::Carry, check_carry(reg8, A));
@@ -657,9 +938,6 @@ void Cpu::add_a(uint8_t reg8)
 }
 
 
-// 0b10010xxx
-// -> 1 byte
-// -> 1 cycle
 void Cpu::sub_a(uint8_t reg8)
 {
     set_flag(Flags::Carry, check_borrow(reg8, A));
@@ -686,9 +964,6 @@ void Cpu::sbc_a(uint8_t reg8)
     set_flag(Flags::Subtraction, true);
 }
 
-// 0b10111xxx/various
-// 1 byte
-// 1 cycle
 void Cpu::cp_a(uint8_t reg8) 
 {
     set_flag(Flags::Carry, check_borrow(reg8, A));
@@ -723,8 +998,7 @@ void Cpu::dec_r8(uint8_t& reg8)
     set_flag(Flags::Subtraction, true);
 }
 
-// 0b10100xxx ~
-// Checked
+
 void Cpu::and_a(uint8_t reg8)
 {
     int i = IR & 0x07;
@@ -737,7 +1011,6 @@ void Cpu::and_a(uint8_t reg8)
     set_flag(Flags::Carry, false);
 }
 
-// 0b11100110 + n
 void Cpu::and_a(uint8_t byte)
 {
 
@@ -750,7 +1023,6 @@ void Cpu::and_a(uint8_t byte)
 }
 
 
-// 0b10110xxx
 // (Checked)
 void Cpu::or_a(uint8_t byte)
 {
@@ -762,7 +1034,6 @@ void Cpu::or_a(uint8_t byte)
     set_flag(Flags::Carry, false);
 }
 
-// 0b10101xxx 
 void Cpu::xor_a(uint8_t byte)
 {
     A ^= byte;
@@ -778,8 +1049,7 @@ void Cpu::xor_a(uint8_t byte)
 // 0b11101000 + signed 8-bit integer
 void Cpu::add_sp_e8()
 {
-    PC++;
-    int8_t val = static_cast<int8_t>(mem->read_byte(PC));
+    int8_t val = static_cast<int8_t>(mem->read_byte(++PC));
 
     set_flag(Flags::HalfCarry, check_carry(SP, val)); // Potential Issue
     set_flag(Flags::Carry, check_half_carry(SP, val)); // Potential Issue
@@ -790,6 +1060,7 @@ void Cpu::add_sp_e8()
     set_flag(Flags::Subtraction, false);
 }
 
+// 0b00xx1001, xx = register
 // 2 cycles
 // 1 byte
 void Cpu::add_hl_r16(uint16_t& r16)
@@ -876,7 +1147,6 @@ void Cpu::reti()
     IME = true;
 }
 
-// TODO
 // 6 cycles
 // 3 bytes
 inline void Cpu::call_nn() 
