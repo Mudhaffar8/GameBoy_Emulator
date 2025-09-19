@@ -63,6 +63,7 @@ private:
     bool is_halted; // unset
 
     void execute_instruction();
+    void cb_execute();
 
     // Helper methods
     inline void set_flag(Flags f, bool cond);
@@ -71,12 +72,16 @@ private:
 
     inline bool check_carry(uint8_t n1, uint8_t n2);
     inline bool check_carry(uint16_t n1, uint16_t n2);
+    inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry);
     
     inline bool check_half_carry(uint8_t n1, uint8_t n2);
     inline bool check_half_carry(uint16_t n1, uint16_t n2);
+    inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry);
 
     inline bool check_borrow(uint8_t n1, uint8_t n2);
+    inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
     inline bool check_half_borrow(uint8_t n1, uint8_t n2);
+    inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
 
     bool check_condition_code(uint8_t cond);
 
@@ -86,7 +91,7 @@ private:
     uint16_t get_reg16(int index);
     uint16_t& get_reg16_ref(int index);
 
-    uint16_t read_next16();
+    inline uint16_t read_next16();
 
     /* CPU Instructions */
     void invalid_opcode() const;
@@ -137,12 +142,8 @@ private:
     void res_u3_r8(uint8_t& reg8);
 
     void sra_r8(uint8_t& reg8);
-    void sra_hl();
-
     void srl_r8(uint8_t& reg8);
-
     void sla_r8(uint8_t& reg8);
-    void sla_hl();
 
     void rr_r8(uint8_t& reg8);
     void rl_r8(uint8_t& reg8);
@@ -152,5 +153,4 @@ private:
 
     // Miscellaneous 
     inline void daa();
-    void halt();
 };
