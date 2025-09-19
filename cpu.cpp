@@ -7,6 +7,12 @@
 const uint8_t CB_U3_BITMASK = 0b00111000;
 const uint8_t CB_OP_BITMASK = 0b00000111;
 
+const uint8_t LD_SRC_BITMASK = 0b00000111;
+
+const uint8_t INC_OP_BITMASK = 0b00011100;
+
+const uint8_t HL_R16_BITMASK = 0b00110000;
+
 const uint8_t MSB_BITMASK = 0x80;
 const uint8_t LSB_BITMASK = 0x01;
 
@@ -137,7 +143,7 @@ bool Cpu::check_condition_code(uint8_t cond)
     return false;
 }
 
-uint8_t Cpu::get_reg(uint8_t index)
+uint8_t Cpu::get_reg(int index)
 {
     switch (index)
     {
@@ -160,7 +166,7 @@ uint8_t Cpu::get_reg(uint8_t index)
     }
 }
 
-uint8_t& Cpu::get_reg_ref(uint8_t index)
+uint8_t& Cpu::get_reg_ref(int index)
 {
     switch (index)
     {
@@ -176,8 +182,40 @@ uint8_t& Cpu::get_reg_ref(uint8_t index)
         return HL.high;
     case 5:
         return HL.low;   
+    case 6:
+        return mem->read_byte_ref(HL.r16);
     case 7:
         return AF.high;
+    }
+}
+
+uint16_t Cpu::get_reg16(int index)
+{
+    switch (index)
+    {
+    case 0:
+        return BC.r16;
+    case 1:
+        return DE.r16;
+    case 2:
+        return HL.r16;
+    case 3:
+        return SP;
+    }
+}
+
+uint16_t& Cpu::get_reg16_ref(int index)
+{
+    switch (index)
+    {
+    case 0:
+        return BC.r16;
+    case 1:
+        return DE.r16;
+    case 2:
+        return HL.r16;
+    case 3:
+        return SP;
     }
 }
 
@@ -189,136 +227,166 @@ void Cpu::execute_instruction()
 
     switch (IR)
     {
-    // Good
+    // NOP
+    // 1 cycle, 1 byte
     case 0x00: 
-        nop();
         break;
 
-    // LD BC, n16
-    // Good
+    // LD r16, n16
+    // 0b00xx0001 + LSB(nn) + MSB(nn)
+    // 3 cycles, 3 bytes
     case 0x01:
-        ld_r16_n16(BC.r16);
+    case 0x11:
+    case 0x21:
+    case 0x31: 
+    {
+        int i = IR >> 4;
+        ld_r16_n16(get_reg16_ref(i));
         break;
-    
-    // LD [BC], A
-    // Good
-    case 0x02:
-        mem->write_byte(A, BC.r16);
-        break;
-    
-    // Good
-    case 0x03:
-        ++BC.r16;
-        break;
-    
-    // Good
-    case 0x04:
-        inc_r8(BC.high);
-        break;
-    
-    // Good
-    case 0x05:
-        dec_r8(BC.high);
-        break;
+    }
 
-    // LD B, n8
-    // Good
-    case 0x06:
-        BC.high = mem->read_byte(++PC);
+    // LD [r16], A
+    // 0b00xx0010
+    case 0x02:
+    case 0x12: 
+    {
+        int i = IR >> 4;
+        mem->write_byte(A, get_reg16(i));
         break;
+    } 
+    
+    // INC r16
+    // 0b00xx0011
+    // 2 cycles
+    case 0x03:
+    case 0x13:
+    case 0x23:
+    case 0x33:
+    {
+        int i = IR >> 4;
+        uint16_t& reg = get_reg16_ref(i);
+        ++reg;
+        break;
+    }
+
+    // INC r8
+    // 0b00xxx100
+    // 1 cycle
+    case 0x04:
+    case 0x0C:
+    case 0x14:
+    case 0x1C:
+    case 0x24:
+    case 0x2C:
+    case 0x3C:
+    {
+        int i = IR >> 3;
+        inc_r8(get_reg_ref(i));
+        break;
+    }
+
+    // DEC r8
+    // 0b00xxx101
+    // 1 cycle
+    case 0x05:
+    case 0x0D:
+    case 0x15:
+    case 0x1D:
+    case 0x25:
+    case 0x2D:
+    case 0x3D:
+    {
+        int i = IR >> 3;
+        dec_r8(get_reg_ref(i));
+        break;
+    }
+
+    // LD r8, n8
+    // 0b00xxx110 + nn
+    // 2 cycles
+    case 0x06:
+    case 0x0E:
+    case 0x16:
+    case 0x1E:
+    case 0x26:
+    case 0x2E:
+    case 0x3E:
+    {
+        int i = IR >> 3;
+        uint8_t& r8 = get_reg_ref(i);
+        r8 = mem->read_byte(++PC);
+        break;
+    }
     
     // RLCA
-    // Good
+    // 0x07
+    // 1 cycle
     case 0x07:
         rlc_r8(A);
         break;
 
     // LD [a16], SP
     // Copy SP & $FF at address n16 and SP >> 8 at address n16 + 1.
-    // Good
+    // 0x08 + LSB(nn) + MSB(nn)
+    // 5 cycles
     case 0x08:
+    {
         uint16_t n16 = read_next16();
 
         mem->write_byte(SP & 0xFF, n16);
         mem->write_byte(SP >> 8, n16 + 1);
         break;
-    
-    // ADD HL, BC
-    // Good
-    case 0x09:
-        add_hl_r16(BC.r16);
-        break;
-    
-    // LD A, [BC]
-    // Good
-    case 0x0A:
-        A = mem->read_byte(BC.r16);
-        break;
-    
-    // Good
-    case 0x0B:
-        --BC.r16;
-        break;
-    
-    // Good
-    case 0x0C:
-        inc_r8(BC.low);
-        break;
-    
-    // Good
-    case 0x0D:
-        dec_r8(BC.low);
-        break;
+    }
 
-    // LD C, n8
-    // Good
-    case 0x0E:
-        BC.low = mem->read_byte(++PC);
+    // ADD HL, r16
+    // 0b00xx1001
+    // 2 cycles
+    case 0x09:
+    case 0x19:
+    case 0x29:
+    case 0x39:
+    {
+        int i = IR >> 4;
+        add_hl_r16(get_reg16_ref(i));
         break;
-    
+    }
+
+    // LD A, [r16]
+    // 0b00xx1010
+    case 0x0A:
+    case 0x1A:
+    {
+        int i = IR >> 4;
+        A = mem->read_byte(get_reg16(i));
+        break;
+    }
+
+    // DEC r16
+    // 0b00xx1011
+    // 2 cycles
+    case 0x0B:
+    case 0x1B:
+    case 0x2B:
+    case 0x3B:
+    {
+        int i = IR >> 4;
+        uint16_t& reg = get_reg16_ref(i);
+        --reg;
+        break;
+    }
+
     // RRCA
-    // Good
+    // 1 cycle
     case 0x0F:
         rrc_r8(A);
         break;
     
-    // Good
+    // STOP n8
+    // 0x10 + nn
+    // 1 cycle
     case 0x10:
-        stop();
         break;
 
-    // LD DE, n16
-    // Good
-    case 0x11:
-        ld_r16_n16(DE.r16);
-        break;
-    
-    // LD [DE], A
-    // Good
-    case 0x12:
-        mem->write_byte(A, DE.r16);
-        break;
-    
-    // Good
-    case 0x13:
-        ++DE.r16;
-        break;
-    
-    // Good
-    case 0x14:
-        inc_r8(DE.high);
-        break;
-    
-    // Good
-    case 0x15:
-        dec_r8(DE.high);
-        break;
-
-    // LD D, n8
-    // Good
-    case 0x16:
-        DE.high = mem->read_byte(++PC);
-        break;
     
     // RLA
     // Good
@@ -332,55 +400,20 @@ void Cpu::execute_instruction()
         jr_e8();
         break;
     
-    // ADD HL, DE
-    // Good
-    case 0x19:
-        add_hl_r16(DE.r16);
-        break;
-    
-    // LD A, [DE]
-    // Good
-    case 0x1A:
-        A = mem->read_byte(DE.r16);
-        break;
-    
-    // Good
-    case 0x1B:
-        --DE.r16;
-        break;
-    
-    // Good
-    case 0x1C:
-        inc_r8(DE.low);
-        break;
-    
-    // Good
-    case 0x1D:
-        dec_r8(DE.low);
-        break;
-
-    // LD E, n8
-    // Good
-    case 0x1E:
-        DE.low = mem->read_byte(++PC);
-        break;
-    
     // RRA
     // Good
     case 0x1F:
         rr_r8(A);
         break;
     
-    // JR NZ, e8
-    // Good
+    // JR cc, e8
+    // 0b001xx000
+    // True/false -> 3/4
     case 0x20:
+    case 0x30:
+    case 0x28:
+    case 0x38:
         jr_cc_e8();
-        break;
-
-    // LD HL, n16
-    // Good
-    case 0x21:
-        ld_r16_n16(HL.r16);
         break;
     
     // LD [HL+], A
@@ -389,176 +422,69 @@ void Cpu::execute_instruction()
         mem->write_byte(A, HL.r16);
         ++HL.r16;
         break;
-    
-    // Good
-    case 0x23:
-        ++HL.r16;
-        break;
-    
-    // Good
-    case 0x24:
-        inc_r8(HL.high);
-        break;
-    
-    // Good
-    case 0x25:
-        dec_r8(HL.high);
-        break;
-    
-    // LD H, n8
-    // Good
-    case 0x26:
-        HL.high = mem->read_byte(++PC);
-        break;
-    
+
     // DAA
-    // Good
+    // 1 cycle
     case 0x27:
         daa();
         break;
 
-    // JR Z, e8
-    // Good
-    case 0x28:
-        jr_cc_e8();
-        break;
-    
-    // ADD HL, HL
-    case 0x29:
-        add_hl_r16(HL.r16);
-        break;
-    
     // LD A, [HL+]
-    // Good
+    // 1 cycle
     case 0x2A:
         A = mem->read_byte(HL.r16);
         ++HL.r16;
         break;
     
-    // Good
-    case 0x2B:
-        --HL.r16;
-        break;
-    
-    // INC L
-    // Good
-    case 0x2C:
-        inc_r8(HL.low);
-        break;
-
-    // DEC L
-    // Good
-    case 0x2D:
-        dec_r8(HL.low);
-        break;
-
-    // LD L, n8
-    // Good
-    case 0x2E:
-        HL.low = mem->read_byte(++PC);
-        break;
-    
     // CPL
-    // Good
+    // 1 cycle
     case 0x2F:
         A = ~A;
 
         set_flag(Flags::Subtraction, true);
         set_flag(Flags::HalfCarry, true);
         break;
-
-    // JR NC, e8
-    // Good
-    case 0x30:
-        jr_cc_e8();
-        break;
-
-    // LD SP, n16
-    // Good
-    case 0x31:
-        ld_r16_n16(SP);
-        break;
     
     // LD [HL-], A
-    // Good
+    // 2 cycles
     case 0x32:
         mem->write_byte(A, HL.r16);
         --HL.r16;
         break;
     
-    // INC SP
-    // Good
-    case 0x33:
-        ++SP;
-        break;
-    
     // INC [HL]
-    // Good
+    // 3 cycles
     case 0x34:
         inc_r8(mem->read_byte_ref(HL.r16));
         break;
     
     // DEC [HL]
-    // Good
+    // 3 cycles
     case 0x35:
         dec_r8(mem->read_byte_ref(HL.r16));
         break;
 
     // LD [HL], n8
-    // 2 cycles
-    // Good
+    // 3 cycles
     case 0x36:
         uint8_t n8 = mem->read_byte(++PC);
         mem->write_byte(HL.r16, n8);
         break;
     
     // SCF
-    // Good
+    // 1 cycle
     case 0x37:
         set_flag(Flags::HalfCarry, false);
         set_flag(Flags::Subtraction, false);
         set_flag(Flags::Carry, true);
         break;
-
-    // JR C, e8
-    // Good
-    case 0x38:
-        jr_cc_e8();
-        break;
     
-    // ADD HL, SP
-    // Good
-    case 0x39:
-        add_hl_r16(SP);
-        break;
     
     // LD A, [HL-]
-    // Good
+    // 2 cycles
     case 0x3A:
         A = mem->read_byte(HL.r16);
         --HL.r16;
-        break;
-
-    // DEC SP
-    // Good
-    case 0x3B:
-        --SP;
-        break;
-
-    // Good
-    case 0x3C:
-        inc_r8(A);
-        break;
-
-    // Good
-    case 0x3D:
-        dec_r8(A);
-        break;
-
-    // LD A, n8
-    // Good
-    case 0x3E:
-        A = mem->read_byte(++PC);
         break;
     
     // CCF
@@ -569,324 +495,115 @@ void Cpu::execute_instruction()
         set_flag(Flags::Carry, !check_flag(Flags::Carry)); 
         break;
     
-    // LD B, B
+    // LD B, X
+    // 0b01xxxyyy - xxx = src, yyy = dst
+    // 1 cycle
     case 0x40:
-        BC.high = BC.high;
-        break;
-    
-    // LD B, C
     case 0x41:
-        BC.high = BC.low;
-        break;
-
-    // LD B, D
     case 0x42:
-        BC.high = DE.high;
-        break;
-    
-    // LD B, E
     case 0x43:
-        BC.high = DE.low;
-        break;
-    
-    // LD B, H
     case 0x44:
-        BC.high = HL.high;
-        break;
-    
-    // LD B, L
     case 0x45:
-        BC.high = HL.low;
-        break;
-
-    // LD B, [HL]
-    case 0x46:
-        BC.high = mem->read_byte(HL.r16);
-        break;
-    
-    // LD B, A
     case 0x47:
-        BC.high = A;
+        BC.high = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD C, B
-    case 0x48:
-        BC.low = BC.high;
-        break;
-    
-    // LD C, C
+    // LD C, X
+    // 1 cycle
+    case 0x48:    
     case 0x49:
-        BC.low = BC.low;
-        break;
-
-    // LD C, D
     case 0x4A:
-        BC.low = DE.high;
-        break;
-    
-    // LD C, E
     case 0x4B:
-        BC.low = DE.low;
-        break;
-    
-    // LD C, H
     case 0x4C:
-        BC.low = HL.high;
-        break;
-    
-    // LD C, L
     case 0x4D:
-        BC.low = HL.low;
-        break;
-
-    // LD C, [HL]
-    case 0x4E:
-        BC.low = mem->read_byte(HL.r16);
-        break;
-    
-    // LD C, A
     case 0x4F:
-        BC.low = A;
+        BC.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD D, B
+    // LD D, X
     case 0x50:
-        DE.high = BC.high;
-        break;
-    
-    // LD D, C
     case 0x51:
-        DE.high = BC.low;
-        break;
-
-    // LD D, D
     case 0x52:
-        DE.high = DE.high;
-        break;
-    
-    // LD D, E
     case 0x53:
-        DE.high = DE.low;
-        break;
-    
-    // LD D, H
     case 0x54:
-        DE.high = HL.high;
-        break;
-    
-    // LD D, L
     case 0x55:
-        DE.high = HL.low;
-        break;
-
-    // LD D, [HL]
-    case 0x56:
-        DE.high = mem->read_byte(HL.r16);
-        break;
-    
-    // LD D, A
     case 0x57:
-        DE.high = A;
-        break;
-
-    // LD E, B
     case 0x58:
-        DE.low = BC.high;
+        DE.high = get_reg(IR & LD_SRC_BITMASK);
         break;
     
-    // LD C, C
+    // LD E, X
     case 0x59:
-        BC.low = BC.low;
-        break;
-
-    // LD C, D
     case 0x5A:
-        BC.low = DE.high;
-        break;
-    
-    // LD C, E
     case 0x5B:
-        BC.low = DE.low;
-        break;
-    
-    // LD C, H
     case 0x5C:
-        BC.low = HL.high;
-        break;
-    
-    // LD C, L
     case 0x5D:
-        BC.low = HL.low;
-        break;
-
-    // LD C, [HL]
-    case 0x5E:
-        BC.low = mem->read_byte(HL.r16);
-        break;
-    
-    // LD C, A
     case 0x5F:
-        BC.low = A;
+        DE.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
     // LD H, B
     case 0x60:
-        HL.high = BC.high;
-        break;
-    
-    // LD H, C
     case 0x61:
-        HL.high = BC.low;
-        break;
-
-    // LD H, D
     case 0x62:
-        HL.high = DE.high;
-        break;
-    
-    // LD H, E
     case 0x63:
-        HL.high = DE.low;
-        break;
-    
-    // LD H, H
     case 0x64:
-        HL.high = HL.high;
-        break;
-    
-    // LD HL, L
     case 0x65:
-        HL.high = HL.low;
-        break;
-
-    // lD
-    case 0x66:
-        HL.high = mem->read_byte(HL.r16);
-        break;
-    
-    // LD H, A
     case 0x67:
-        HL.high = A;
+        HL.high = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD L, B
+    // LD L, X
     case 0x68:
-        HL.low = BC.high;
-        break;
-    
-    // LD L, C
     case 0x69:
-        HL.low = BC.low;
-        break;
-
-    // LD L, D
     case 0x6A:
-        HL.low = DE.high;
-        break;
-    
-    // LD L, E
     case 0x6B:
-        HL.low = DE.low;
-        break;
-    
-    // LD L, H
     case 0x6C:
-        HL.low = HL.high;
-        break;
-    
-    // LD L, L
     case 0x6D:
-        HL.low = HL.low;
-        break;
-
-    // LD L, [HL]
-    case 0x6E:
-        HL.low = mem->read_byte(HL.r16);
-        break;
-    
-    // LD L, A
     case 0x6F:
-        HL.low = A;
+        HL.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD D, B
+    // LD [HL], X
+    // 2 cycles
     case 0x70:
-        DE.high = BC.high;
-        break;
-    
-    // LD D, C
     case 0x71:
-        DE.high = BC.low;
-        break;
-
-    // LD D, D
     case 0x72:
-        DE.high = DE.high;
-        break;
-    
-    // LD D, E
     case 0x73:
-        DE.high = DE.low;
-        break;
-    
-    // LD D, H
     case 0x74:
-        DE.high = HL.high;
-        break;
-    
-    // LD D, L
     case 0x75:
-        DE.high = HL.low;
-        break;
-
-    // LD D, [HL]
-    case 0x76:
-        DE.high = mem->read_byte(HL.r16);
-        break;
-    
-    // LD D, A
     case 0x77:
-        DE.high = A;
-        break;
-
-    // LD E, B
-    case 0x78:
-        DE.low = BC.high;
+        mem->write_byte(get_reg(IR & LD_SRC_BITMASK), HL.r16);
         break;
     
-    // LD C, C
-    case 0x79:
-        BC.low = BC.low;
-        break;
-
-    // LD C, D
-    case 0x7A:
-        BC.low = DE.high;
-        break;
-    
-    // LD C, E
-    case 0x7B:
-        BC.low = DE.low;
-        break;
-    
-    // LD C, H
-    case 0x7C:
-        BC.low = HL.high;
-        break;
-    
-    // LD C, L
-    case 0x7D:
-        BC.low = HL.low;
-        break;
-
-    // LD C, [HL]
+    // LD r8, [HL]
+    // 0b01xxx110
+    // 2 cycles
+    case 0x46:
+    case 0x4E:
+    case 0x56:
+    case 0x5E:
+    case 0x66:
+    case 0x6E:
     case 0x7E:
-        BC.low = mem->read_byte(HL.r16);
+        uint8_t& reg = get_reg_ref(IR & LD_SRC_BITMASK);
+        reg = mem->read_byte(HL.r16);
         break;
-    
-    // LD C, A
+
+    // HALT
+    case 0x76:
+        halt();
+        break;
+
+    // LD A, B
+    case 0x78:
+    case 0x79:
+    case 0x7A:
+    case 0x7B:
+    case 0x7C:
+    case 0x7D:
     case 0x7F:
-        BC.low = A;
+        AF.high = get_reg(IR & LD_SRC_BITMASK);
         break;
 
     default:
@@ -904,10 +621,6 @@ void Cpu::invalid_opcode() const
     std::cout << "Invalid Opcode: " << std::hex << +IR << '\n';
 }
 
-// 0x00
-// -> 1 cycle
-// -> 1 byte
-void Cpu::nop() const {}
 
 // 0b10001xxx ~
 // -> 1 cycle
@@ -1404,16 +1117,6 @@ void Cpu::rrc_r8(uint8_t& reg8)
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
 }
 
-void Cpu::di()
-{
-    IME = false;
-}
-
-void Cpu::ei()
-{
-    IME = true;
-}
-
 void Cpu::halt()
 {
 
@@ -1441,14 +1144,6 @@ inline void Cpu::daa()
 
     set_flag(Flags::HalfCarry, A == 0);
     set_flag(Flags::Zero, true);
-}
-
-// 2 bytes
-// 
-void Cpu::stop()
-{
-    // ++PC;
-    // uint8_t byte = mem->read_byte(PC);
 }
 
 void Cpu::halt()

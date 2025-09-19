@@ -79,8 +79,12 @@ private:
     inline bool check_half_borrow(uint8_t n1, uint8_t n2);
 
     bool check_condition_code(uint8_t cond);
-    uint8_t get_reg(uint8_t index);
-    uint8_t& get_reg_ref(uint8_t index);
+
+    uint8_t get_reg(int index);
+    uint8_t& get_reg_ref(int index);
+
+    uint16_t get_reg16(int index);
+    uint16_t& get_reg16_ref(int index);
 
     uint16_t read_next16();
 
@@ -148,9 +152,5 @@ private:
 
     // Miscellaneous 
     inline void daa();
-    void stop();
-    void nop() const;
-    void di();
-    void ei();
     void halt();
 };

@@ -26,5 +26,5 @@ inline void Memory::write_byte(uint8_t byte, uint16_t address)
 
 bool Memory::load_cartridge(Cartridge& cartridge)
 {
-
+    return false;
 }
