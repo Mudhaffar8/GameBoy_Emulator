@@ -72,10 +72,12 @@ private:
 
     inline bool check_carry(uint8_t n1, uint8_t n2);
     inline bool check_carry(uint16_t n1, uint16_t n2);
+    inline bool check_carry(uint16_t n1, int8_t n2);
     inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry);
     
     inline bool check_half_carry(uint8_t n1, uint8_t n2);
     inline bool check_half_carry(uint16_t n1, uint16_t n2);
+    inline bool check_half_carry(uint16_t n1, int8_t n2);
     inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry);
 
     inline bool check_borrow(uint8_t n1, uint8_t n2);
@@ -127,9 +129,14 @@ private:
     void jr_e8();
     void jr_cc_e8();
 
+    void push_r16(RegPair& reg16);
+    void pop_r16(RegPair& reg16);
+
     inline void ret();
     void ret_cc();
     void reti();
+
+    void rst();
 
     inline void call_nn();
     void call_cc_nn();

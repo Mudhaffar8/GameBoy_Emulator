@@ -93,6 +93,12 @@ inline bool Cpu::check_carry(uint16_t n1, uint16_t n2)
     return (n1 + n2) > 0xFFFF;
 }
 
+inline bool check_carry(uint16_t n1, int8_t n2)
+{
+    return ((n1 & 0xFF) + n2) > 0xFF;
+}
+
+
 inline bool Cpu::check_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return (n1 + n2 + carry) > 0xFF;
@@ -112,6 +118,12 @@ inline bool Cpu::check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
 }
+
+inline bool check_half_borrow(uint16_t n1, int8_t n2)
+{
+    return ((n1 & 0xFFF) + n2) > 0xF;
+}
+
 
 inline bool Cpu::check_borrow(uint8_t n1, uint8_t n2)
 {
@@ -816,13 +828,208 @@ void Cpu::execute_instruction()
 
     // POP r16
     case 0xC1:
+        pop_r16(BC);
+        break;
     case 0xD1:
+        pop_r16(DE);
+        break;
     case 0xE1:
+        pop_r16(HL);
+        break;
+    // POP AF
+    case 0xF1:
+        pop_r16(AF);
         break;
 
-    // 
+    // JP CC a16
+    case 0xC2:
+    case 0xD2:
+    case 0xCA:
+    case 0xDA:
+        jp_cc_n16();
+        break;
+
+    // POP r16
+    case 0xC5:
+        push_r16(BC);
+        break;
+    case 0xD5:
+        push_r16(DE);
+        break;
+    case 0xE5:
+        push_r16(HL);
+        break;
+    // POP AF
+    case 0xF5:
+        push_r16(AF);
+        break;
+
+    // ADD A, n8
+    // 2 cycles
+    case 0xC6:
+        add_a(mem->read_byte(++PC));
+        break;
+    // SUB A, n8
+    case 0xD6:
+        sub_a(mem->read_byte(++PC));
+        break;
+    // AND A, n8
+    case 0xE6:
+        and_a(mem->read_byte(++PC));
+        break;
+    // OR A, n8
+    case 0xF6:
+        or_a(mem->read_byte(++PC));
+        break;
+
+    // RST vec
+    // 4 cycles
+    case 0xC7:
+    case 0xCF:
+    case 0xD7:
+    case 0xDF:
+    case 0xE7:
+    case 0xEF:
+    case 0xF7:
+    case 0xFF:
+        break;
+
+    case 0xC9:
+        ret();
+        break;
+    
+    // CB-Prefixed Opocodes
+    case 0xCB:
+        cb_execute();
+        break;
+
+    // ADD A, n8
+    // 2 cycles
+    case 0xCE:
+        adc_a(mem->read_byte(++PC));
+        break;
+    // SUB A, n8
+    case 0xDE:
+        sbc_a(mem->read_byte(++PC));
+        break;
+    // AND A, n8
+    case 0xEE:
+        xor_a(mem->read_byte(++PC));
+        break;
+    // OR A, n8
+    case 0xFE:
+        cp_a(mem->read_byte(++PC));
+        break;
+
+    // LDH [a8], A
+    // 3 cycles
+    case 0xE0:
+    {
+        uint8_t imm8 = mem->read_byte(++PC);
+        mem->write_byte(A, IO_REGISTERS_START + imm8);
+        break;
+    }
+
+    // LDH [C], A
+    // 2 cycles
+    case 0xE2:
+        mem->write_byte(A, IO_REGISTERS_START + BC.low);
+        break;
+
+    // ADD SP, e8
+    // 2 bytes
+    // 4 cycles
+    case 0xE8:
+    {
+        int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
+        
+        set_flag(Flags::Carry, check_carry(SP, imm8));
+        set_flag(Flags::HalfCarry, check_half_carry(SP, imm8));
+
+        SP += imm8;
+
+        set_flag(Flags::Zero, false);
+        set_flag(Flags::Subtraction, false);
+        break;
+    }
+    // JP HL
+    // 1 cycle
+    case 0xE9:
+        PC = HL.r16;
+        break;
+
+    // LD [a16], A
+    // 3 bytes
+    // 4 cycles
+    case 0xEA:
+    {
+        uint16_t imm16 = read_next16();
+        mem->write_byte(A, imm16);
+        break;
+    }
+
+    // LDH A, [a8]
+    // 2 cycles
+    case 0xF0:
+    {
+        uint8_t imm8 = mem->read_byte(++PC);
+        A = mem->read_byte(IO_REGISTERS_START + imm8);
+        break;
+    }
+
+    // LDH A, [C]
+    // 2 cycles
+    case 0xF2:
+        A = mem->read_byte(IO_REGISTERS_START + BC.low);
+        break;
+
+    // DI
+    // 1 cycle
+    case 0xF3:
+        IME = false;
+        break;
+
+    // LD HL, SP + e8
+    // FIX ME
+    // 2 bytes
+    // 2 cycles
+    case 0xF8:
+    {
+        int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
+
+        set_flag(Flags::Carry, check_carry(SP, imm8)); 
+        set_flag(Flags::HalfCarry, check_carry(SP, imm8)); 
+
+        HL.r16 = SP;
+
+        set_flag(Flags::Zero, false);
+        set_flag(Flags::Subtraction, false);
+        break;
+    }
+    // LD SP, HL
+    // 2 cycles
+    case 0xF9:
+        SP = HL.r16;
+        break;
+
+    // LD A, [a8]
+    // 3] cycles
+    // 2 bytes
+    case 0xFA:
+    {
+        uint8_t imm8 = mem->read_byte(++PC);
+        A = mem->read_byte(IO_REGISTERS_START + imm8);
+        break;
+    }
+
+    // EI
+    // 1 cycles
+    case 0xFB:
+        IME = true;
+        break;
 
     default:
+        std::cout << "Invalid Opcode: " << std::hex << +IR << '\n';
         break;
     }
 
@@ -920,7 +1127,7 @@ void Cpu::inc_r8(uint8_t& reg8)
 {
     set_flag(Flags::HalfCarry, check_half_carry(reg8, 1));
 
-    reg8++;
+    ++reg8;
 
     set_flag(Flags::Zero, reg8 == 0);
     set_flag(Flags::Subtraction, false);
@@ -1043,6 +1250,27 @@ void Cpu::jr_e8()
 {
     uint8_t byte = mem->read_byte(++PC);
     PC += static_cast<int8_t>(byte);
+}
+
+void Cpu::push_r16(RegPair& regPair)
+{
+    // DEC SP
+    // LD [SP], HIGH(r16)  ; B, D or H
+    // DEC SP
+    // LD [SP], LOW(r16)   ; C, E or L
+
+    regPair.high = mem->read_byte(--SP);
+    regPair.low = mem->read_byte(--SP);
+}
+
+void Cpu::pop_r16(RegPair& regPair)
+{
+    // LD LOW(r16), [SP]   ; C, E or L
+    // INC SP
+    // LD HIGH(r16), [SP]  ; B, D or H
+    // INC SP
+    mem->write_byte(regPair.low, SP++);
+    mem->write_byte(regPair.high, SP++);
 }
 
 // 4 cycles
