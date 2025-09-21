@@ -82,6 +82,7 @@ private:
 
     inline bool check_borrow(uint8_t n1, uint8_t n2);
     inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
+
     inline bool check_half_borrow(uint8_t n1, uint8_t n2);
     inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
 
@@ -118,28 +119,19 @@ private:
     void add_sp_e8();
     void add_hl_r16(uint16_t& r16);
 
-    // Load Instructions
+    // 16-bit Load Instructions
     void ld_r16_n16(uint16_t& reg16);
 
     // Branching
-    void jp_hl();
-    void jp_cc_n16();
-    void jp_n16();
-
     void jr_e8();
-    void jr_cc_e8();
 
+    // Stack 
     void push_r16(RegPair& reg16);
     void pop_r16(RegPair& reg16);
 
     inline void ret();
-    void ret_cc();
-    void reti();
 
-    void rst();
-
-    inline void call_nn();
-    void call_cc_nn();
+    inline void call_nn(uint16_t nn);
 
     // Bit manipulation
     void swap_r8(uint8_t& reg8);

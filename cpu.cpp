@@ -444,9 +444,15 @@ void Cpu::execute_instruction()
     case 0x30:
     case 0x28:
     case 0x38:
-        jr_cc_e8();
+    {
+        uint8_t cc = (IR >> 3) & 0x07;
+        if (check_condition_code(cc))
+        {
+            jr_e8();
+        }
         break;
-    
+    }
+
     // LD [HL+], A
     // Good
     case 0x22:
@@ -812,21 +818,30 @@ void Cpu::execute_instruction()
     }
 
     // CP A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0xBE:
         cp_a(mem->read_byte(HL.r16));
         break;
 
+    // 0b110xx000
     // RET CC
-    // True/False -> 5/2
+    // 1 byte
+    // True/False -> 20/8 T-cycles
     case 0xC0:
     case 0xC8:
     case 0xD0:
     case 0xD8:
-        ret_cc();
+    {  
+        uint8_t cc = (IR >> 3) & 0x07;
+        if (check_condition_code(cc))
+        {
+            ret();
+        }
         break;
+    }
 
     // POP r16
+    // 12 T-cycles
     case 0xC1:
         pop_r16(BC);
         break;
@@ -842,14 +857,48 @@ void Cpu::execute_instruction()
         break;
 
     // JP CC a16
+    // 0b110xx010
+    // True/False -> 16/12 T-Cycles
     case 0xC2:
-    case 0xD2:
     case 0xCA:
+    case 0xD2:
     case 0xDA:
-        jp_cc_n16();
+    {
+        uint8_t cc = (IR >> 3) & 0x07;
+        if (check_condition_code(cc))
+        {
+            PC = read_next16();
+        }
+        break;
+    }
+    
+    // JP a16
+    // 16 T-Cycles
+    case 0xC3:
+        PC = read_next16();
         break;
 
-    // POP r16
+    // CALL CC a16
+    // True/False -> 24/12 T-Cycles
+    // 3 bytes
+    // 0b110xx100 + LSB + MSB
+    case 0xC4:
+    case 0xCC:
+    case 0xD4:
+    case 0xDC:
+    {
+        uint8_t cc = (IR >> 3) & 0x07;
+        if (check_condition_code(cc))
+        {
+            uint16_t imm16 = read_next16();
+            call_nn(imm16);
+        }
+        break;
+    }
+
+    // PUSH r16
+    // 16 T-Cycles
+    // 1 byte
     case 0xC5:
         push_r16(BC);
         break;
@@ -865,7 +914,7 @@ void Cpu::execute_instruction()
         break;
 
     // ADD A, n8
-    // 2 cycles
+    // 8 T-cycles
     case 0xC6:
         add_a(mem->read_byte(++PC));
         break;
@@ -883,7 +932,8 @@ void Cpu::execute_instruction()
         break;
 
     // RST vec
-    // 4 cycles
+    // 16 T-cycles
+    // 1 byte
     case 0xC7:
     case 0xCF:
     case 0xD7:
@@ -892,8 +942,13 @@ void Cpu::execute_instruction()
     case 0xEF:
     case 0xF7:
     case 0xFF:
+    {
+        call_nn(IR - 0xC7);
         break;
+    }
 
+    // RET
+    // 16 T-cycles
     case 0xC9:
         ret();
         break;
@@ -903,8 +958,20 @@ void Cpu::execute_instruction()
         cb_execute();
         break;
 
+    // CALL a16
+    // 24 T-Cycles
+    // 3 bytes
+    case 0xCD:
+    {
+        uint16_t imm16 = read_next16();
+        call_nn(imm16);
+        
+        break;
+    }
+
     // ADD A, n8
-    // 2 cycles
+    // 8 T-cycles
+    // 2 bytes
     case 0xCE:
         adc_a(mem->read_byte(++PC));
         break;
@@ -921,8 +988,17 @@ void Cpu::execute_instruction()
         cp_a(mem->read_byte(++PC));
         break;
 
+    // RETI
+    // 16 T-Cycles
+    // 1 byte
+    case 0xD9:
+        ret();
+        IME = true;
+        break;
+
     // LDH [a8], A
-    // 3 cycles
+    // 12 T-cycles
+    // 2 bytes
     case 0xE0:
     {
         uint8_t imm8 = mem->read_byte(++PC);
@@ -931,14 +1007,15 @@ void Cpu::execute_instruction()
     }
 
     // LDH [C], A
-    // 2 cycles
+    // 8 T-cycles
+    // 1 byte
     case 0xE2:
         mem->write_byte(A, IO_REGISTERS_START + BC.low);
         break;
 
     // ADD SP, e8
+    // 16 T-cycles
     // 2 bytes
-    // 4 cycles
     case 0xE8:
     {
         int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
@@ -952,15 +1029,16 @@ void Cpu::execute_instruction()
         set_flag(Flags::Subtraction, false);
         break;
     }
+
     // JP HL
-    // 1 cycle
+    // 4 T-cycles
     case 0xE9:
         PC = HL.r16;
         break;
 
     // LD [a16], A
+    // 16 T-cycles
     // 3 bytes
-    // 4 cycles
     case 0xEA:
     {
         uint16_t imm16 = read_next16();
@@ -969,7 +1047,8 @@ void Cpu::execute_instruction()
     }
 
     // LDH A, [a8]
-    // 2 cycles
+    // 12 T-cycles
+    // 2 bytes
     case 0xF0:
     {
         uint8_t imm8 = mem->read_byte(++PC);
@@ -978,52 +1057,52 @@ void Cpu::execute_instruction()
     }
 
     // LDH A, [C]
-    // 2 cycles
+    // 8 T-cycles
     case 0xF2:
         A = mem->read_byte(IO_REGISTERS_START + BC.low);
         break;
 
     // DI
-    // 1 cycle
+    // 4 T-cycle
     case 0xF3:
         IME = false;
         break;
 
     // LD HL, SP + e8
-    // FIX ME
+    // 12 T-cycles
     // 2 bytes
-    // 2 cycles
     case 0xF8:
     {
         int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
 
         set_flag(Flags::Carry, check_carry(SP, imm8)); 
-        set_flag(Flags::HalfCarry, check_carry(SP, imm8)); 
+        set_flag(Flags::HalfCarry, check_half_carry(SP, imm8)); 
 
-        HL.r16 = SP;
+        HL.r16 = SP + imm8;
 
         set_flag(Flags::Zero, false);
         set_flag(Flags::Subtraction, false);
         break;
     }
+
     // LD SP, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0xF9:
         SP = HL.r16;
         break;
 
-    // LD A, [a8]
-    // 3] cycles
-    // 2 bytes
+    // LD A, [a16]
+    // 16 T-cycles
+    // 3 bytes
     case 0xFA:
     {
-        uint8_t imm8 = mem->read_byte(++PC);
-        A = mem->read_byte(IO_REGISTERS_START + imm8);
+        uint16_t imm16 = read_next16();
+        A = mem->read_byte(imm16);
         break;
     }
 
     // EI
-    // 1 cycles
+    // 4 T-cycles
     case 0xFB:
         IME = true;
         break;
@@ -1038,7 +1117,8 @@ void Cpu::execute_instruction()
 
 void Cpu::cb_execute()
 {
-    IR = mem->read_byte(PC);
+    IR = mem->read_byte(++PC);
+    
     switch(IR)
     {
     default:
@@ -1206,46 +1286,6 @@ void Cpu::add_hl_r16(uint16_t& r16)
 }
 
 /* Branching */
-// 1 cycle
-// 1 byte
-void Cpu::jp_hl()
-{
-    PC = HL.r16;
-}
-
-// 0b110xx010 + LSB + MSB -> xx = condition code
-// 3 bytes
-// 4 taken/ 3 untaken cycles
-void Cpu::jp_cc_n16()
-{
-    uint8_t cc = (IR & CC_BITMASK) >> CC_BITSHIFT_RIGHT;
-    if (check_condition_code(cc))
-    {
-        jp_n16();
-    }
-}
-
-// 0b11000011/0xC3
-// 3 bytes
-// 4 cycles
-void Cpu::jp_n16() 
-{
-    PC = read_next16();
-}
-
-
-void Cpu::jr_cc_e8()
-{
-    uint8_t cc = (IR & CC_BITMASK) >> CC_BITSHIFT_RIGHT;
-    if (check_condition_code(cc))
-    {
-        jr_e8();
-    }
-}
-
-// 0b00011000/0x18 + int8
-// 2 bytes
-// 3 cycles
 void Cpu::jr_e8()
 {
     uint8_t byte = mem->read_byte(++PC);
@@ -1283,45 +1323,13 @@ inline void Cpu::ret()
     PC = (msb << 8) | lsb;
 }
 
-// 0b110xx000
-// 5 true/ 2 false
-void Cpu::ret_cc() 
-{
-    uint8_t cond = (IR & CC_BITMASK) >> CC_BITSHIFT_RIGHT;
-    if (check_condition_code(cond))
-    {
-        ret();
-    }
-}
 
-void Cpu::reti() 
+inline void Cpu::call_nn(uint16_t addr) 
 {
-    ret();
-    IME = true;
-}
-
-// 6 cycles
-// 3 bytes
-inline void Cpu::call_nn() 
-{
-    uint16_t addr = read_next16();
-
     mem->write_byte(PC & LOW_NIBBLE_MASK, SP--);
     mem->write_byte(PC & HIGH_NIBBLE_MASK, SP--);
 
     PC = addr;
-}
-
-// 0b110xx100 + LSB + MSB
-// 3 bytes
-// 6/3 cycles
-void Cpu::call_cc_nn() 
-{
-    uint8_t cc = (IR & CC_BITMASK) >> CC_BITSHIFT_RIGHT;
-    if (check_condition_code(cc))
-    {
-        call_nn();
-    }
 }
 
 /* Bit operations */
