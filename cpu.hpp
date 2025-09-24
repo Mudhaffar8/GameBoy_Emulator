@@ -125,20 +125,19 @@ private:
     // Branching
     void jr_e8();
 
-    // Stack 
+    // Stack Operations
     void push_r16(RegPair& reg16);
     void pop_r16(RegPair& reg16);
 
-    inline void ret();
-
     inline void call_nn(uint16_t nn);
+    inline void ret();
 
     // Bit manipulation
     void swap_r8(uint8_t& reg8);
 
-    void set_u3_r8(uint8_t& reg8);
-    void bit_u3_r8(uint8_t& reg8);
-    void res_u3_r8(uint8_t& reg8);
+    void set_u3_r8(uint8_t& reg8, uint8_t bit_index);
+    void bit_u3_r8(uint8_t& reg8, uint8_t bit_index);
+    void res_u3_r8(uint8_t& reg8, uint8_t bit_index);
 
     void sra_r8(uint8_t& reg8);
     void srl_r8(uint8_t& reg8);
