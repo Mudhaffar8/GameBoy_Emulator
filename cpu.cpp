@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <stdexcept>
 
 const uint8_t CB_U3_BITMASK = 0b00111000;
 const uint8_t CB_OP_BITMASK = 0b00000111;
@@ -100,7 +101,7 @@ inline bool Cpu::check_carry(uint16_t n1, uint16_t n2)
     return (n1 + n2) > 0xFFFF;
 }
 
-inline bool check_carry(uint16_t n1, int8_t n2)
+inline bool Cpu::check_carry(uint16_t n1, int8_t n2)
 {
     return ((n1 & 0xFF) + n2) > 0xFF;
 }
@@ -125,7 +126,7 @@ inline bool Cpu::check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
     return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
 }
 
-inline bool check_half_borrow(uint16_t n1, int8_t n2)
+inline bool Cpu::check_half_carry(uint16_t n1, int8_t n2)
 {
     return ((n1 & 0xFFF) + n2) > 0xF;
 }
@@ -147,6 +148,11 @@ inline bool Cpu::check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
     return (n2 & 0x0F) > ((n1 + carry) & 0x0F);
 }
 
+inline bool Cpu::check_half_borrow(uint8_t n1, uint8_t n2)
+{
+    return (n2 & 0x0F) > (n1 & 0x0F);
+}
+
 inline uint16_t Cpu::read_next16()
 {
     uint8_t low = mem->read_byte(++PC);
@@ -155,7 +161,7 @@ inline uint16_t Cpu::read_next16()
     return (high << 8) | low;
 }
 
-bool Cpu::check_condition_code(uint8_t cond) 
+bool Cpu::check_condition_code(int cond) 
 { 
     switch(cond)
     {
@@ -172,7 +178,7 @@ bool Cpu::check_condition_code(uint8_t cond)
         return check_flag(Flags::Carry);
     
     default:
-        std::cerr << "Invalid condition code " << +cond << '\n';
+        std::cerr << "Invalid CC Code: " << std::hex << cond;
         break;
     }
 
@@ -195,10 +201,12 @@ uint8_t Cpu::get_reg(int index)
         return HL.high;
     case 5:
         return HL.low;  
-    case 6:
-        return mem->read_byte(HL.r16);
     case 7:
         return AF.high;
+    default:
+        std::string str("Invalid index: " + index);
+        throw std::invalid_argument(str);
+        break;
     }
 }
 
@@ -218,10 +226,12 @@ uint8_t& Cpu::get_reg_ref(int index)
         return HL.high;
     case 5:
         return HL.low;   
-    case 6:
-        return mem->read_byte_ref(HL.r16);
     case 7:
         return AF.high;
+    default:
+        std::string str("Invalid index: " + index);
+        throw std::invalid_argument(str);
+        break;
     }
 }
 
@@ -237,6 +247,10 @@ uint16_t Cpu::get_reg16(int index)
         return HL.r16;
     case 3:
         return SP;
+    default:
+        std::string str("Invalid index: " + index);
+        throw std::invalid_argument(str);
+        break;
     }
 }
 
@@ -252,6 +266,10 @@ uint16_t& Cpu::get_reg16_ref(int index)
         return HL.r16;
     case 3:
         return SP;
+    default:
+        std::string str("Invalid index: " + index);
+        throw std::invalid_argument(str);
+        break;
     }
 }
 
@@ -264,13 +282,13 @@ void Cpu::execute_instruction()
     switch (IR)
     {
     // NOP
-    // 1 cycle, 1 byte
+    // 4 T-cycles, 1 byte
     case 0x00: 
         break;
 
     // LD r16, n16
     // 0b00xx0001 + LSB(nn) + MSB(nn)
-    // 3 cycles, 3 bytes
+    // 12 T-cycles, 3 bytes
     case 0x01:
     case 0x11:
     case 0x21:
@@ -283,7 +301,7 @@ void Cpu::execute_instruction()
 
     // LD [r16], A
     // 0b00xx0010
-    // 2 cycles
+    // 8 T-cycles
     case 0x02:
     case 0x12: 
     {
@@ -294,7 +312,7 @@ void Cpu::execute_instruction()
     
     // INC r16
     // 0b00xx0011
-    // 2 cycles
+    // 8 T-cycles
     case 0x03:
     case 0x13:
     case 0x23:
@@ -308,7 +326,7 @@ void Cpu::execute_instruction()
 
     // INC r8
     // 0b00xxx100
-    // 1 cycle
+    // 4 T-cycles
     case 0x04:
     case 0x0C:
     case 0x14:
@@ -324,7 +342,7 @@ void Cpu::execute_instruction()
 
     // DEC r8
     // 0b00xxx101
-    // 1 cycle
+    // 4 T-cycles
     case 0x05:
     case 0x0D:
     case 0x15:
@@ -340,7 +358,7 @@ void Cpu::execute_instruction()
 
     // LD r8, n8
     // 0b00xxx110 + nn
-    // 2 cycles
+    // 8 T-cycles
     case 0x06:
     case 0x0E:
     case 0x16:
@@ -357,7 +375,7 @@ void Cpu::execute_instruction()
     
     // RLCA
     // 0x07
-    // 1 cycle
+    // 4 T-cycle
     case 0x07:
         rlc_r8(A);
         break;
@@ -365,7 +383,7 @@ void Cpu::execute_instruction()
     // LD [a16], SP
     // Copy SP & $FF at address n16 and SP >> 8 at address n16 + 1.
     // 0x08 + LSB(nn) + MSB(nn)
-    // 5 cycles
+    // 20 T-cycles
     case 0x08:
     {
         uint16_t n16 = read_next16();
@@ -377,7 +395,7 @@ void Cpu::execute_instruction()
 
     // ADD HL, r16
     // 0b00xx1001
-    // 2 cycles
+    // 8 T-cycles
     case 0x09:
     case 0x19:
     case 0x29:
@@ -390,6 +408,7 @@ void Cpu::execute_instruction()
 
     // LD A, [r16]
     // 0b00xx1010
+    // 8 T-cycles
     case 0x0A:
     case 0x1A:
     {
@@ -400,7 +419,7 @@ void Cpu::execute_instruction()
 
     // DEC r16
     // 0b00xx1011
-    // 2 cycles
+    // 8 T-cycles
     case 0x0B:
     case 0x1B:
     case 0x2B:
@@ -413,40 +432,40 @@ void Cpu::execute_instruction()
     }
 
     // RRCA
-    // 1 cycle
+    // 4 T-cycles
     case 0x0F:
         rrc_r8(A);
         break;
     
     // STOP n8
-    // 0x10 + nn
-    // 1 cycle
+    // 0x10 + n8
+    // 4 T-cycles
     case 0x10:
-        PC++;
+        ++PC; // Ignore n8
         break;
 
     
     // RLA
-    // Good
+    // 4 T-cycles
     case 0x17:
         rl_r8(A);
         break;
 
     // JR e8
-    // 3 cycles
+    // 12 T-cycles
     case 0x18:
         jr_e8();
         break;
     
     // RRA
-    // 1 cycle
+    // 4 T-cycles
     case 0x1F:
         rr_r8(A);
         break;
     
     // JR cc, e8
     // 0b001xx000
-    // True/false -> 3/2
+    // True/false -> 12/8 T-cycles
     case 0x20:
     case 0x30:
     case 0x28:
@@ -461,14 +480,14 @@ void Cpu::execute_instruction()
     }
 
     // LD [HL+], A
-    // Good
+    // 8 T-cycles
     case 0x22:
         mem->write_byte(A, HL.r16);
         ++HL.r16;
         break;
 
     // DAA
-    // 1 cycle
+    // 4 T-cycless
     case 0x27:
         daa();
         break;
@@ -481,7 +500,7 @@ void Cpu::execute_instruction()
         break;
     
     // CPL
-    // 1 cycle
+    // 4 T-cycles
     case 0x2F:
         A = ~A;
 
@@ -490,26 +509,26 @@ void Cpu::execute_instruction()
         break;
     
     // LD [HL-], A
-    // 2 cycles
+    // 8 T-cycles
     case 0x32:
         mem->write_byte(A, HL.r16);
         --HL.r16;
         break;
     
     // INC [HL]
-    // 3 cycles
+    // 12 T-cycles
     case 0x34:
         inc_r8(mem->read_byte_ref(HL.r16));
         break;
     
     // DEC [HL]
-    // 3 cycles
+    // 12 T-cycles
     case 0x35:
         dec_r8(mem->read_byte_ref(HL.r16));
         break;
 
     // LD [HL], n8
-    // 3 cycles
+    // 12 T-scycles
     case 0x36:
     {
         uint8_t n8 = mem->read_byte(++PC);
@@ -518,7 +537,7 @@ void Cpu::execute_instruction()
     }
 
     // SCF
-    // 1 cycle
+    // 4 T-cycles
     case 0x37:
         set_flag(Flags::HalfCarry, false);
         set_flag(Flags::Subtraction, false);
@@ -527,23 +546,23 @@ void Cpu::execute_instruction()
     
     
     // LD A, [HL-]
-    // 2 cycles
+    // 8 T-cycles
     case 0x3A:
         A = mem->read_byte(HL.r16);
         --HL.r16;
         break;
     
     // CCF
-    // Good
+    // 4 T-cycles
     case 0x3F:
-        set_flag(Flags::HalfCarry, false);
         set_flag(Flags::Subtraction, false);
+        set_flag(Flags::HalfCarry, false);
         set_flag(Flags::Carry, !check_flag(Flags::Carry)); 
         break;
     
     // LD B, X
     // 0b01xxxyyy - xxx = src, yyy = dst
-    // 1 cycle
+    // 4 T-cycles
     case 0x40:
     case 0x41:
     case 0x42:
@@ -555,7 +574,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD C, X
-    // 1 cycle
+    // 4 T-cycles
     case 0x48:    
     case 0x49:
     case 0x4A:
@@ -567,6 +586,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD D, X
+    // 4 T-cycles
     case 0x50:
     case 0x51:
     case 0x52:
@@ -574,11 +594,12 @@ void Cpu::execute_instruction()
     case 0x54:
     case 0x55:
     case 0x57:
-    case 0x58:
         DE.high = get_reg(IR & LD_SRC_BITMASK);
         break;
     
     // LD E, X
+    // 4 T-cycles
+    case 0x58:
     case 0x59:
     case 0x5A:
     case 0x5B:
@@ -589,6 +610,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD H, B
+    // 4 T-cycles
     case 0x60:
     case 0x61:
     case 0x62:
@@ -600,6 +622,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD L, X
+    // 4 T-cycles
     case 0x68:
     case 0x69:
     case 0x6A:
@@ -611,7 +634,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD [HL], X
-    // 2 cycles
+    // 8 T-cycles
     case 0x70:
     case 0x71:
     case 0x72:
@@ -624,7 +647,7 @@ void Cpu::execute_instruction()
     
     // LD r8, [HL]
     // 0b01xxx110
-    // 2 cycles
+    // 8 T-cycles
     case 0x46:
     case 0x4E:
     case 0x56:
@@ -656,7 +679,7 @@ void Cpu::execute_instruction()
 
     // ADD A, r8
     // 0b10000xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0x80:
     case 0x81:
     case 0x82:
@@ -678,7 +701,7 @@ void Cpu::execute_instruction()
 
     // ADC A, r8
     // 0b10001xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0x88:
     case 0x89:
     case 0x8A:
@@ -693,14 +716,14 @@ void Cpu::execute_instruction()
     }
 
     // ADC A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0x8E:
         adc_a(mem->read_byte_ref(HL.r16));
         break;
 
     // SUB A, r8
     // 0b10010xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0x90:
     case 0x91:
     case 0x92:
@@ -715,14 +738,14 @@ void Cpu::execute_instruction()
     }
 
     // SUB A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0x96:
         sub_a(mem->read_byte(HL.r16));
         break;
 
     // SBC A, r8
     // 0b10011xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0x98:
     case 0x99:
     case 0x9A:
@@ -737,14 +760,14 @@ void Cpu::execute_instruction()
     }
 
     // SBC A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0x9E:
         sbc_a(mem->read_byte(HL.r16));
         break;
 
     // AND A, r8
     // 0b10100xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0xA0:
     case 0xA1:
     case 0xA2:
@@ -759,14 +782,14 @@ void Cpu::execute_instruction()
     }
 
     // AND A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0xA6:
         and_a(mem->read_byte(HL.r16));
         break;
 
     // XOR A, r8
     // 0b10101xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0xA8:
     case 0xA9:
     case 0xAA:
@@ -781,14 +804,14 @@ void Cpu::execute_instruction()
     }
 
     // XOR A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0xAE:
         xor_a(mem->read_byte(HL.r16));
         break;
 
     // OR A, r8
     // 0b10110xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0xB0:
     case 0xB1:
     case 0xB2:
@@ -803,14 +826,14 @@ void Cpu::execute_instruction()
     }
 
     // OR A, HL
-    // 2 cycles
+    // 8 T-cycles
     case 0xB6:
         or_a(mem->read_byte(HL.r16));
         break;
 
     // CP A, r8
     // 0b10111xxx
-    // 1 cycle
+    // 4 T-cycles
     case 0xB8:
     case 0xB9:
     case 0xBA:
@@ -976,21 +999,21 @@ void Cpu::execute_instruction()
         break;
     }
 
-    // ADD A, n8
+    // ADC A, n8
     // 8 T-cycles
     // 2 bytes
     case 0xCE:
         adc_a(mem->read_byte(++PC));
         break;
-    // SUB A, n8
+    // SBC A, n8
     case 0xDE:
         sbc_a(mem->read_byte(++PC));
         break;
-    // AND A, n8
+    // XOR A, n8
     case 0xEE:
         xor_a(mem->read_byte(++PC));
         break;
-    // OR A, n8
+    // CP A, n8
     case 0xFE:
         cp_a(mem->read_byte(++PC));
         break;
@@ -1065,12 +1088,13 @@ void Cpu::execute_instruction()
 
     // LDH A, [C]
     // 8 T-cycles
+    // 1 byte
     case 0xF2:
         A = mem->read_byte(IO_REGISTERS_START + BC.low);
         break;
 
     // DI
-    // 4 T-cycle
+    // 4 T-cycles
     case 0xF3:
         IME = false;
         break;
@@ -1094,6 +1118,7 @@ void Cpu::execute_instruction()
 
     // LD SP, HL
     // 8 T-cycles
+    // 1 bytes
     case 0xF9:
         SP = HL.r16;
         break;
@@ -1126,7 +1151,7 @@ void Cpu::cb_execute()
 {
     IR = mem->read_byte(++PC);
 
-    uint8_t i = (IR & CB_U3_BITMASK) >> 3;
+    uint8_t u3 = (IR & CB_U3_BITMASK) >> 3;
     uint8_t op = IR & CB_OP_BITMASK;
     
     switch(IR)
@@ -1151,7 +1176,7 @@ void Cpu::cb_execute()
         break;
 
     // RRC r8
-    // 0b00000xxx
+    // 0b00001xxx
     // 8 T-cycles
     case 0x08:
     case 0x09:
@@ -1165,12 +1190,12 @@ void Cpu::cb_execute()
 
     // RRC [HL]
     // 16 T-cycles
-    case 0xE:
+    case 0x0E:
         rrc_r8(mem->read_byte_ref(HL.r16));
         break;
 
     // RL r8
-    // 0b00000xxx
+    // 0b00010xxx
     // 8 T-cycles
     case 0x10:
     case 0x11:
@@ -1189,7 +1214,7 @@ void Cpu::cb_execute()
         break;
 
     // RR r8
-    // 0b00000xxx
+    // 0b00011xxx
     // 8 T-cycles
     case 0x18:
     case 0x19:
@@ -1208,7 +1233,7 @@ void Cpu::cb_execute()
         break;
 
     // SLA r8
-    // 0b00000xxx
+    // 0b00100xxx
     // 8 T-cycles
     case 0x20:
     case 0x21:
@@ -1227,7 +1252,7 @@ void Cpu::cb_execute()
         break;
 
     // SRA r8
-    // 0b00000xxx
+    // 0b00101xxx
     // 8 T-cycles
     case 0x28:
     case 0x29:
@@ -1246,7 +1271,7 @@ void Cpu::cb_execute()
         break;
 
     // SWAP r8
-    // 0b00000xxx
+    // 0b00110xxx
     // 8 T-cycles
     case 0x30:
     case 0x31:
@@ -1265,7 +1290,7 @@ void Cpu::cb_execute()
         break;
 
     // SRL r8
-    // 0b00000xxx
+    // 0b00111xxx
     // 8 T-cycles
     case 0x38:
     case 0x39:
@@ -1284,6 +1309,7 @@ void Cpu::cb_execute()
         break;
     
     // Bit u3 r8
+    // 01yyyxxx
     // 8 T-cycles
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: 
     case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4F: 
@@ -1293,7 +1319,7 @@ void Cpu::cb_execute()
     case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6F: 
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x77: 
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: 
-        bit_u3_r8(get_reg_ref(op), i);
+        bit_u3_r8(get_reg_ref(op), u3);
 
     // 12 T-cycles
     case 0x46:
@@ -1304,10 +1330,11 @@ void Cpu::cb_execute()
     case 0x6E:
     case 0x76:
     case 0x7E:
-        bit_u3_r8(mem->read_byte_ref(HL.r16), i);
+        bit_u3_r8(mem->read_byte_ref(HL.r16), u3);
         break;
 
     // RES u3 r8
+    // 10yyyxxx
     // 8 T-cycles
     case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: 
     case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8F: 
@@ -1317,7 +1344,7 @@ void Cpu::cb_execute()
     case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAF: 
     case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB7: 
     case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF:
-        res_u3_r8(get_reg_ref(op), i);
+        res_u3_r8(get_reg_ref(op), u3);
 
     // 16 T-cycles
     case 0x86:
@@ -1328,7 +1355,7 @@ void Cpu::cb_execute()
     case 0xAE:
     case 0xB6:
     case 0xBE:
-        res_u3_r8(mem->read_byte_ref(HL.r16), i);
+        res_u3_r8(mem->read_byte_ref(HL.r16), u3);
         break;
     
     // SET u3 r8
@@ -1341,7 +1368,7 @@ void Cpu::cb_execute()
     case 0xE8: case 0xE9: case 0xEA: case 0xEB: case 0xEC: case 0xED: case 0xEF: 
     case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF7: 
     case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFF: 
-        set_u3_r8(get_reg_ref(op), i);
+        set_u3_r8(get_reg_ref(op), u3);
 
     // SET [HL]
     // 16 T-cycless
@@ -1353,7 +1380,7 @@ void Cpu::cb_execute()
     case 0xEE:
     case 0xF6:
     case 0xFE:
-        set_u3_r8(mem->read_byte_ref(HL.r16), i);
+        set_u3_r8(mem->read_byte_ref(HL.r16), u3);
         break;
 
     default:
@@ -1535,7 +1562,7 @@ void Cpu::pop_r16(RegPair& regPair)
     mem->write_byte(regPair.high, SP++);
 }
 
-// 4 cycles
+// 16 T-cycles
 // 1 byte
 inline void Cpu::ret() 
 {
@@ -1572,15 +1599,8 @@ void Cpu::swap_r8(uint8_t& reg8)
 }
 
 // CB-Prefix + 0b01yyyxxx - xxx = operand, yyy = bit index
-// Checked
 void Cpu::bit_u3_r8(uint8_t& reg8, uint8_t bit_index)
 {
-    int i = IR & CB_OP_BITMASK;
-    uint8_t bit_index = (IR & CB_U3_BITMASK) >> 3;
-
-    std::cout << "Bit Index: " << static_cast<int>(bit_index) << std::endl;
-    std::cout << "Register Index: " << static_cast<int>(i) << std::endl;
-
     uint8_t bit_to_check = reg8 & (0x1 << bit_index);
 
     set_flag(Flags::Zero, bit_to_check == 0);

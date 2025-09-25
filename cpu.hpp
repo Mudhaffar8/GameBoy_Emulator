@@ -86,7 +86,7 @@ private:
     inline bool check_half_borrow(uint8_t n1, uint8_t n2);
     inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
 
-    bool check_condition_code(uint8_t cond);
+    bool check_condition_code(int cond);
 
     uint8_t get_reg(int index);
     uint8_t& get_reg_ref(int index);
