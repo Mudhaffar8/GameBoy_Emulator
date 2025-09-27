@@ -3,9 +3,10 @@
 
 int main(int argc, char** argv)
 {
-    Cpu cpu;
+    Memory mem;
+    Cpu cpu(&mem);
 
-    // cpu.test();
+    cpu.test();
 
     return 0;
 }

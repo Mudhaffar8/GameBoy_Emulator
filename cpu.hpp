@@ -29,7 +29,7 @@ struct RegPair
 class Cpu
 {
 public:
-    Cpu();
+    Cpu(Memory* _mem);
 
     void test();
 
@@ -61,6 +61,8 @@ private:
     // Write Only
     bool IME; // Unset when Game Starts Running
     bool is_halted; // unset
+
+    uint32_t ticks; 
 
     void execute_instruction();
     void cb_execute();
@@ -116,7 +118,6 @@ private:
     void xor_a(uint8_t reg8);
 
     // 16-bit Arithmetic/Logic Operations
-    void add_sp_e8();
     void add_hl_r16(uint16_t& r16);
 
     // 16-bit Load Instructions

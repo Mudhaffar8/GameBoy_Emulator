@@ -25,43 +25,41 @@ const uint8_t CC_BITSHIFT_RIGHT = 2;
 const uint8_t LOW_NIBBLE_MASK = 0x0F;
 const uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
-Cpu::Cpu() :
+Cpu::Cpu(Memory* _mem) :
     AF(), 
     BC(), 
     DE(), 
     HL(), 
     IR(),
+    mem(_mem),
     IME(false), 
     is_halted(false)
 {
     F = 0;
 }
 
+void print_reg(uint8_t reg) { std::cout << std::hex << +reg << std::endl; }
+void print_reg(uint16_t reg) { std::cout << std::hex << +reg << std::endl; }
+void print_reg(RegPair reg) 
+{ 
+    std::cout << std::hex << "High: 0x" << std::hex << +reg.high << ", " << "Low: 0x" << std::hex << +reg.low << std::endl; 
+}
+
+
 // For Testing Purposes
 void Cpu::test()
 {
     // 0b10001xxx
-    // IR = 0b10001010; // ADC A, D
+    IR = 0x34; // INC [HL]
 
-    // A = 0x00;
-    // reg8[2] = 0x02;
+    HL.r16 = WORK_RAM_START;
+    mem->write_byte(0xFE, HL.r16);
 
-    // bit_u3_r8();
+    execute_instruction();
 
-    // print_flags();
+    print_flags();
 
-    // bool flag_z = check_flag(Flags::Zero);
-    // bool flag_s = check_flag(Flags::Subtraction);
-    // bool flag_c = check_flag(Flags::Carry);
-    // bool flag_hc = check_flag(Flags::HalfCarry);
-
-    // std::cout << static_cast<int>(A) << std::endl;
-
-    // assert(flag_z == false);
-    // assert(flag_s == false);
-    // assert(flag_c == false);
-    // assert(flag_hc == true);
-
+    print_reg(mem->read_byte(HL.r16));
 }
 
 
@@ -80,8 +78,8 @@ void Cpu::print_flags() const
 {
     std::cout << "Z: " << static_cast<int>(check_flag(Flags::Zero)) << ", ";
     std::cout << "N: " << static_cast<int>(check_flag(Flags::Subtraction)) << ", ";
-    std::cout << "C: " << static_cast<int>(check_flag(Flags::Carry)) << ", ";
     std::cout << "H: " << static_cast<int>(check_flag(Flags::HalfCarry)) << ", ";
+    std::cout << "C: " << static_cast<int>(check_flag(Flags::Carry)) << ", ";
 
     for (uint8_t i = 0; i < 8; i++)
         std::cout << (((0x80 >> i) & F) != 0);
@@ -204,8 +202,7 @@ uint8_t Cpu::get_reg(int index)
     case 7:
         return AF.high;
     default:
-        std::string str("Invalid index: " + index);
-        throw std::invalid_argument(str);
+        throw std::invalid_argument("Invalid index: " + index);
         break;
     }
 }
@@ -229,8 +226,7 @@ uint8_t& Cpu::get_reg_ref(int index)
     case 7:
         return AF.high;
     default:
-        std::string str("Invalid index: " + index);
-        throw std::invalid_argument(str);
+        throw std::invalid_argument("Invalid index: " + index);
         break;
     }
 }
@@ -248,8 +244,7 @@ uint16_t Cpu::get_reg16(int index)
     case 3:
         return SP;
     default:
-        std::string str("Invalid index: " + index);
-        throw std::invalid_argument(str);
+        throw std::invalid_argument("Invalid index: " + index);
         break;
     }
 }
@@ -267,8 +262,7 @@ uint16_t& Cpu::get_reg16_ref(int index)
     case 3:
         return SP;
     default:
-        std::string str("Invalid index: " + index);
-        throw std::invalid_argument(str);
+        throw std::invalid_argument("Invalid index: " + index);
         break;
     }
 }
@@ -277,7 +271,7 @@ void Cpu::execute_instruction()
 {    
     if (is_halted) return;
 
-    IR = mem->read_byte(PC);
+    // IR = mem->read_byte(PC);
 
     switch (IR)
     {
@@ -442,6 +436,7 @@ void Cpu::execute_instruction()
     // 4 T-cycles
     case 0x10:
         ++PC; // Ignore n8
+        is_halted = true;
         break;
 
     
@@ -493,7 +488,7 @@ void Cpu::execute_instruction()
         break;
 
     // LD A, [HL+]
-    // 1 cycle
+    // 8 T-cycles
     case 0x2A:
         A = mem->read_byte(HL.r16);
         ++HL.r16;
@@ -1631,17 +1626,16 @@ void Cpu::ld_r16_n16(uint16_t& reg16)
 // CB Prefix + 0b00101xxx - xxx = register
 // -> 2 bytes + n
 // -> 2 cycles
+// Good
 void Cpu::sra_r8(uint8_t& reg8)
 {
-    int i = IR & CB_OP_BITMASK;
-
-    uint8_t msb = reg8 & 0x80;
-    uint8_t lsb = reg8 & 0x01;
+    uint8_t msb = reg8 & MSB_BITMASK;
+    uint8_t lsb = reg8 & LSB_BITMASK;
 
     reg8 >>= 1;
     reg8 |= msb;
 
-    set_flag(Flags::Carry, lsb == 1);
+    set_flag(Flags::Carry, lsb == LSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0);
     set_flag(Flags::Subtraction, false);
     set_flag(Flags::HalfCarry, false);
@@ -1655,31 +1649,29 @@ void Cpu::srl_r8(uint8_t& reg8)
     set_flag(Flags::Subtraction, false);
     set_flag(Flags::HalfCarry, false);
 
-    int i = IR & CB_OP_BITMASK;
-
     uint8_t lsb = reg8 & LSB_BITMASK;
 
     reg8 >>= 1;
 
-    set_flag(Flags::Carry, lsb == 1);
+    set_flag(Flags::Carry, lsb == LSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0);
-}
+} // Good
 
 // CB Prefix + 0b00100xxx - xxx = register
 // -> 2 bytes
 // -> 2 cycles
+// Good
 void Cpu::sla_r8(uint8_t& reg8)
 {
-    int i = IR & CB_OP_BITMASK;
+    set_flag(Flags::Subtraction, false);
+    set_flag(Flags::HalfCarry, false);
 
-    uint8_t msb = reg8 & 0x80;
+    uint8_t msb = reg8 & MSB_BITMASK;
 
     reg8 <<= 1;
 
-    set_flag(Flags::Carry, msb == 1);
+    set_flag(Flags::Carry, msb == MSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0);
-    set_flag(Flags::Subtraction, false);
-    set_flag(Flags::HalfCarry, false);
 }
 
 // CB Prefix + 0b00011xxx
@@ -1698,7 +1690,7 @@ void Cpu::rr_r8(uint8_t& reg8)
     reg8 >>= 1;
     reg8 |= (static_cast<uint8_t>(check_flag(Flags::Carry)) << 7);
 
-    set_flag(Flags::Carry, lsb == 1);
+    set_flag(Flags::Carry, lsb == LSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
 }
 
@@ -1718,7 +1710,7 @@ void Cpu::rl_r8(uint8_t& reg8)
     reg8 <<= 1;
     reg8 |= static_cast<uint8_t>(check_flag(Flags::Carry));
 
-    set_flag(Flags::Carry, msb == 1);
+    set_flag(Flags::Carry, msb == MSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
 }
 
@@ -1739,9 +1731,9 @@ void Cpu::rlc_r8(uint8_t& reg8)
 
     reg8 |= (msb >> 7);
 
-    set_flag(Flags::Carry, msb == 1);
+    set_flag(Flags::Carry, msb == MSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
-}
+} // Not Good
 
 // CB Prefix + 0b00000xxx
 // [0] -> [7 -> 0] -> C
@@ -1757,9 +1749,9 @@ void Cpu::rrc_r8(uint8_t& reg8)
     uint8_t lsb = reg8 & LSB_BITMASK;
     reg8 >>= 1;
 
-    reg8 |= lsb;
+    reg8 |= (lsb << 7);
 
-    set_flag(Flags::Carry, lsb == 1);
+    set_flag(Flags::Carry, lsb == LSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
 }
 
