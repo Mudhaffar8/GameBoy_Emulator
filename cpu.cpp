@@ -19,6 +19,9 @@ const uint8_t ARITHMETIC_OP_BITMASK = 0x07;
 const uint8_t MSB_BITMASK = 0x80;
 const uint8_t LSB_BITMASK = 0x01;
 
+const uint16_t MSB_BITMASK16 = 0x8000;
+const uint16_t LSB_BITMASK16 = 0x1;
+
 const uint8_t CC_BITMASK = 0xA0;
 const uint8_t CC_BITSHIFT_RIGHT = 2;
 
@@ -50,16 +53,18 @@ void print_reg(RegPair reg)
 void Cpu::test()
 {
     // 0b10001xxx
-    IR = 0x34; // INC [HL]
+    IR = 0x01; // INC [HL]
 
-    HL.r16 = WORK_RAM_START;
-    mem->write_byte(0xFE, HL.r16);
+    PC = WORK_RAM_START;
+    
+    mem->write_byte(0x11, PC + 1);
+    mem->write_byte(0xAA, PC + 2);
 
     execute_instruction();
 
     print_flags();
 
-    print_reg(mem->read_byte(HL.r16));
+    print_reg(BC);
 }
 
 
@@ -867,18 +872,15 @@ void Cpu::execute_instruction()
 
     // POP r16
     // 12 T-cycles
+    // 0b11xx0001
     case 0xC1:
-        pop_r16(BC);
-        break;
     case 0xD1:
-        pop_r16(DE);
-        break;
     case 0xE1:
-        pop_r16(HL);
+        pop_r16(get_reg16_ref((IR >> 4) & 0x03));
         break;
     // POP AF
     case 0xF1:
-        pop_r16(AF);
+        pop_r16(AF.r16);
         break;
 
     // JP CC a16
@@ -924,18 +926,15 @@ void Cpu::execute_instruction()
     // PUSH r16
     // 16 T-Cycles
     // 1 byte
+    // 0b11xx0101
     case 0xC5:
-        push_r16(BC);
-        break;
     case 0xD5:
-        push_r16(DE);
-        break;
     case 0xE5:
-        push_r16(HL);
+        push_r16(get_reg16((IR >> 4) & 0x03));
         break;
     // POP AF
     case 0xF5:
-        push_r16(AF);
+        push_r16(AF.r16);
         break;
 
     // ADD A, n8
@@ -1536,25 +1535,27 @@ void Cpu::jr_e8()
     PC += static_cast<int8_t>(byte);
 }
 
-void Cpu::push_r16(RegPair& regPair)
+void Cpu::push_r16(uint16_t reg)
 {
     // DEC SP
     // LD [SP], HIGH(r16)  ; B, D or H
     // DEC SP
     // LD [SP], LOW(r16)   ; C, E or L
 
-    regPair.high = mem->read_byte(--SP);
-    regPair.low = mem->read_byte(--SP);
+    mem->write_byte(--SP, reg >> 8);
+    mem->write_byte(--SP, reg & 0xFF);
 }
 
-void Cpu::pop_r16(RegPair& regPair)
+void Cpu::pop_r16(uint16_t& reg)
 {
     // LD LOW(r16), [SP]   ; C, E or L
     // INC SP
     // LD HIGH(r16), [SP]  ; B, D or H
     // INC SP
-    mem->write_byte(regPair.low, SP++);
-    mem->write_byte(regPair.high, SP++);
+    uint8_t low = mem->read_byte(SP++);
+    uint8_t high = mem->read_byte(SP++);
+
+    reg = (high << 8) | low;
 }
 
 // 16 T-cycles
@@ -1777,4 +1778,34 @@ inline void Cpu::daa()
 
     set_flag(Flags::HalfCarry, A == 0);
     set_flag(Flags::Zero, true);
+}
+
+void Cpu::check_interrupts()
+{
+    if (mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG) != 0)
+    {
+        is_halted = false;
+        
+        if (IME) 
+        { 
+            IME = false;
+            handle_interrupt();
+        }
+
+        IME = true;
+    }
+}
+
+// 20 T-cycles
+void Cpu::handle_interrupt()
+{
+    uint8_t interrupt = mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG);
+
+    if (interrupt & static_cast<uint8_t>(Interrupts::LCD) != 0)
+    {
+        push_r16(PC);
+        PC = 0x40;
+    }
+
+    // Handle Rest of Interrupts
 }

@@ -13,6 +13,7 @@ enum class Interrupts
     JoyPad = 0x10
 };
 
+
 struct RegPair
 {
     union
@@ -23,7 +24,7 @@ struct RegPair
 
     RegPair() : r16(0) {}
     RegPair(uint16_t _r16) : r16(_r16) {}
-    RegPair(uint8_t _low, uint8_t _high) : low(_low), high(_high) {}
+    RegPair(uint8_t _high, uint8_t _low) : low(_low), high(_high) {}
 };
 
 class Cpu
@@ -127,8 +128,8 @@ private:
     void jr_e8();
 
     // Stack Operations
-    void push_r16(RegPair& reg16);
-    void pop_r16(RegPair& reg16);
+    void push_r16(uint16_t reg16);
+    void pop_r16(uint16_t& reg16);
 
     inline void call_nn(uint16_t nn);
     inline void ret();
@@ -152,4 +153,7 @@ private:
 
     // Miscellaneous 
     inline void daa();
+
+    void check_interrupts();
+    void handle_interrupt();
 };
