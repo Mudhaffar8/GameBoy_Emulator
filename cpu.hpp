@@ -73,22 +73,6 @@ private:
     bool check_flag(Flags f) const;
     void print_flags() const;
 
-    inline bool check_carry(uint8_t n1, uint8_t n2);
-    inline bool check_carry(uint16_t n1, uint16_t n2);
-    inline bool check_carry(uint16_t n1, int8_t n2);
-    inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry);
-    
-    inline bool check_half_carry(uint8_t n1, uint8_t n2);
-    inline bool check_half_carry(uint16_t n1, uint16_t n2);
-    inline bool check_half_carry(uint16_t n1, int8_t n2);
-    inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry);
-
-    inline bool check_borrow(uint8_t n1, uint8_t n2);
-    inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
-
-    inline bool check_half_borrow(uint8_t n1, uint8_t n2);
-    inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry);
-
     bool check_condition_code(int cond);
 
     uint8_t get_reg(int index);

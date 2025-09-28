@@ -53,12 +53,11 @@ void print_reg(RegPair reg)
 void Cpu::test()
 {
     // 0b10001xxx
-    IR = 0x01; // INC [HL]
-
-    PC = WORK_RAM_START;
-    
-    mem->write_byte(0x11, PC + 1);
+    mem->write_byte(0xFB, PC + 1);
     mem->write_byte(0xAA, PC + 2);
+    
+    PC = WORK_RAM_START;
+
 
     execute_instruction();
 
@@ -94,64 +93,64 @@ void Cpu::print_flags() const
 
 
 /* Helper methods */
-inline bool Cpu::check_carry(uint8_t n1, uint8_t n2)
+inline bool check_carry(uint8_t n1, uint8_t n2)
 {
     return (n1 + n2) > 0xFF;
 }
 
-inline bool Cpu::check_carry(uint16_t n1, uint16_t n2)
+inline bool check_carry(uint16_t n1, uint16_t n2)
 {
     return (n1 + n2) > 0xFFFF;
 }
 
-inline bool Cpu::check_carry(uint16_t n1, int8_t n2)
+inline bool check_carry(uint16_t n1, int8_t n2)
 {
     return ((n1 & 0xFF) + n2) > 0xFF;
 }
 
-inline bool Cpu::check_carry(uint8_t n1, uint8_t n2, uint8_t carry)
+inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return (n1 + n2 + carry) > 0xFF;
 }
 
-inline bool Cpu::check_half_carry(uint8_t n1, uint8_t n2)
+inline bool check_half_carry(uint8_t n1, uint8_t n2)
 {
     return ((n1 & 0xF) + (n2 & 0xF)) > 0xF;
 }
 
-inline bool Cpu::check_half_carry(uint16_t n1, uint16_t n2)
+inline bool check_half_carry(uint16_t n1, uint16_t n2)
 {
     return ((n1 & 0xFFF) + (n2 & 0xFFF)) > 0xFFF;
 }
 
-inline bool Cpu::check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
+inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
 }
 
-inline bool Cpu::check_half_carry(uint16_t n1, int8_t n2)
+inline bool check_half_carry(uint16_t n1, int8_t n2)
 {
     return ((n1 & 0xFFF) + n2) > 0xF;
 }
 
 
-inline bool Cpu::check_borrow(uint8_t n1, uint8_t n2)
+inline bool check_borrow(uint8_t n1, uint8_t n2)
 {
     return n2 > n1;
 }
 
-inline bool Cpu::check_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
+inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return n2 > (n1 + carry);
 }
 
 // May not be Sound
-inline bool Cpu::check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
+inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 {
     return (n2 & 0x0F) > ((n1 + carry) & 0x0F);
 }
 
-inline bool Cpu::check_half_borrow(uint8_t n1, uint8_t n2)
+inline bool check_half_borrow(uint8_t n1, uint8_t n2)
 {
     return (n2 & 0x0F) > (n1 & 0x0F);
 }
@@ -1128,6 +1127,8 @@ void Cpu::execute_instruction()
     }
 
     // EI
+    // Note: The effect of ei is delayed by one instruction. 
+    // This means that ei followed immediately by di does not allow any interrupts between them.
     // 4 T-cycles
     case 0xFB:
         IME = true;
@@ -1797,15 +1798,46 @@ void Cpu::check_interrupts()
 }
 
 // 20 T-cycles
+// 8 T-cycles = 2 NOPs
+// 8 T-cycles = push PC onto stack
+// 4 T-cycles = set PC to 
 void Cpu::handle_interrupt()
 {
-    uint8_t interrupt = mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG);
+    uint8_t interrupt_flag = mem->read_byte(INTERRUPT_FLAG);
+    uint8_t interrupt = interrupt_flag & mem->read_byte(INTERRUPT_ENABLE);
 
-    if (interrupt & static_cast<uint8_t>(Interrupts::LCD) != 0)
+    if (interrupt & static_cast<uint8_t>(Interrupts::VBlank) != 0)
     {
+        mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
         push_r16(PC);
-        PC = 0x40;
+        PC = VBLANK_INTERRUPT_START;
     }
 
-    // Handle Rest of Interrupts
+    else if (interrupt & static_cast<uint8_t>(Interrupts::LCD) != 0)
+    {
+        mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::LCD), INTERRUPT_FLAG);
+        push_r16(PC);
+        PC = STAT_INTERRUPT_START;
+    }
+
+    else if (interrupt & static_cast<uint8_t>(Interrupts::Timer) != 0)
+    {
+        mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Timer), INTERRUPT_FLAG);
+        push_r16(PC);
+        PC = TIMER_INTERRUPT_STARRT;
+    }
+
+    else if (interrupt & static_cast<uint8_t>(Interrupts::Serial) != 0)
+    {
+        mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Serial), INTERRUPT_FLAG);
+        push_r16(PC);
+        PC = SERIAL_INTERRUPT_START;
+    }
+
+    else if (interrupt & static_cast<uint8_t>(Interrupts::JoyPad) != 0)
+    {
+        mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
+        push_r16(PC);
+        PC = JOYPAD_INTERRUPT_START;
+    }
 }

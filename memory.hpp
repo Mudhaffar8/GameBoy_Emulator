@@ -9,9 +9,18 @@ const size_t MEMORY_SIZE = 0x10000;
 const uint16_t BOOT_ROM_START = 0x0000;
 const uint16_t BOOT_ROM_END = 0x00FF;
 
+/* Interrupt Addresses */
+const uint16_t VBLANK_INTERRUPT_START = 0x0040;
+const uint16_t STAT_INTERRUPT_START = 0x0048;
+const uint16_t TIMER_INTERRUPT_STARRT = 0x0050;
+const uint16_t SERIAL_INTERRUPT_START = 0x0058;
+const uint16_t JOYPAD_INTERRUPT_START = 0x0060;
+
 /* Bank Zero - Static */
 const uint16_t BANK_ZERO_START = 0x0000;
 const uint16_t BANK_ZERO_END = 0x3FFF;
+
+const uint16_t ROM_CODE_START = 0x0150; 
 
 /* Bank N - Switchable ROM Bank */
 const uint16_t BANK_N_START = 0x4000;
