@@ -29,20 +29,23 @@ const uint8_t LOW_NIBBLE_MASK = 0x0F;
 const uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
 Cpu::Cpu(Memory* _mem) :
+    mem(_mem),
     AF(), 
     BC(), 
     DE(), 
-    HL(), 
+    HL(),
+    A(AF.high),
+    F(AF.low),
+    PC(),
+    SP(),
     IR(),
-    mem(_mem),
     IME(false), 
-    is_halted(false)
-{
-    F = 0;
-}
+    is_halted(false),
+    ticks(0)
+{}
 
-void print_reg(uint8_t reg) { std::cout << std::hex << +reg << std::endl; }
-void print_reg(uint16_t reg) { std::cout << std::hex << +reg << std::endl; }
+void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << std::endl; }
+void print_reg(uint16_t reg) { std::cout << "0x" << std::hex << +reg << std::endl; }
 void print_reg(RegPair reg) 
 { 
     std::cout << std::hex << "High: 0x" << std::hex << +reg.high << ", " << "Low: 0x" << std::hex << +reg.low << std::endl; 
@@ -53,17 +56,21 @@ void print_reg(RegPair reg)
 void Cpu::test()
 {
     // 0b10001xxx
-    mem->write_byte(0xFB, PC + 1);
-    mem->write_byte(0xAA, PC + 2);
-    
-    PC = WORK_RAM_START;
+    SP = HIGH_RAM_END;
+    PC = ROM_CODE_START;
 
+    print_reg(SP);
+    print_reg(PC);
 
-    execute_instruction();
+    push_r16(PC);
 
-    print_flags();
+    print_reg(SP);
+    print_reg(PC);
 
-    print_reg(BC);
+    pop_r16(PC);
+
+    print_reg(SP);
+    print_reg(PC);
 }
 
 
@@ -531,7 +538,7 @@ void Cpu::execute_instruction()
     case 0x36:
     {
         uint8_t n8 = mem->read_byte(++PC);
-        mem->write_byte(HL.r16, n8);
+        mem->write_byte(n8, HL.r16);
         break;
     }
 
@@ -864,7 +871,7 @@ void Cpu::execute_instruction()
         uint8_t cc = (IR >> 3) & 0x07;
         if (check_condition_code(cc))
         {
-            ret();
+            push_r16(PC);
         }
         break;
     }
@@ -973,7 +980,7 @@ void Cpu::execute_instruction()
     // RET
     // 16 T-cycles
     case 0xC9:
-        ret();
+        push_r16(PC);
         break;
     
     // CB-Prefixed Opocodes
@@ -1015,7 +1022,7 @@ void Cpu::execute_instruction()
     // 16 T-Cycles
     // 1 byte
     case 0xD9:
-        ret();
+        push_r16(PC);
         IME = true;
         break;
 
@@ -1543,8 +1550,8 @@ void Cpu::push_r16(uint16_t reg)
     // DEC SP
     // LD [SP], LOW(r16)   ; C, E or L
 
-    mem->write_byte(--SP, reg >> 8);
-    mem->write_byte(--SP, reg & 0xFF);
+    mem->write_byte(reg >> 8, --SP);
+    mem->write_byte(reg & 0xFF, --SP);
 }
 
 void Cpu::pop_r16(uint16_t& reg)
@@ -1559,21 +1566,10 @@ void Cpu::pop_r16(uint16_t& reg)
     reg = (high << 8) | low;
 }
 
-// 16 T-cycles
-// 1 byte
-inline void Cpu::ret() 
-{
-    uint8_t lsb = mem->read_byte(++SP);
-    uint8_t msb = mem->read_byte(++SP);
-
-    PC = (msb << 8) | lsb;
-}
-
 
 inline void Cpu::call_nn(uint16_t addr) 
 {
-    mem->write_byte(PC & LOW_NIBBLE_MASK, SP--);
-    mem->write_byte(PC & HIGH_NIBBLE_MASK, SP--);
+    push_r16(PC);
 
     PC = addr;
 }
@@ -1800,7 +1796,7 @@ void Cpu::check_interrupts()
 // 20 T-cycles
 // 8 T-cycles = 2 NOPs
 // 8 T-cycles = push PC onto stack
-// 4 T-cycles = set PC to 
+// 4 T-cycles = set PC to Interrupt Address
 void Cpu::handle_interrupt()
 {
     uint8_t interrupt_flag = mem->read_byte(INTERRUPT_FLAG);

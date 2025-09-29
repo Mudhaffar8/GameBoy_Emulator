@@ -3,6 +3,7 @@
 #include "cartridge.hpp"
 
 #include <cstdint>
+#include <stdexcept>
 
 const size_t MEMORY_SIZE = 0x10000;
 

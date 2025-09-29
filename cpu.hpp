@@ -35,6 +35,8 @@ public:
     void test();
 
 private:
+    // Raw Pointer is fine as 
+    // Memory is gauranteed to live as long as CPU
     Memory* mem;
     
     enum class Flags 
@@ -48,27 +50,27 @@ private:
     RegPair AF, BC, DE, HL;
 
     // Special Registers
-    uint8_t& A = AF.high; // Accumulator
-    uint8_t& F = AF.low;
+    uint8_t& A; // Accumulator
+    uint8_t& F; // Flags
 
-    // 16-bit Program Counter and Stack pointer
-    uint16_t PC;
-    uint16_t SP;
+    // 16-bit Registers
+    uint16_t PC; // Program Counter
+    uint16_t SP; // Stack Pointer
 
     // 8-bit Instruction Register
     uint8_t IR;
 
     // Interrupt Master Enable
-    // Write Only
     bool IME; // Unset when Game Starts Running
-    bool is_halted; // unset
+    bool is_halted; // Also Unset
 
     uint32_t ticks; 
 
+    /* Instruction Execution */
     void execute_instruction();
     void cb_execute();
 
-    // Helper methods
+    /* Helper Methods */
     inline void set_flag(Flags f, bool cond);
     bool check_flag(Flags f) const;
     void print_flags() const;
@@ -82,6 +84,7 @@ private:
     uint16_t& get_reg16_ref(int index);
 
     inline uint16_t read_next16();
+
 
     /* CPU Instructions */
     void invalid_opcode() const;
@@ -116,7 +119,6 @@ private:
     void pop_r16(uint16_t& reg16);
 
     inline void call_nn(uint16_t nn);
-    inline void ret();
 
     // Bit manipulation
     void swap_r8(uint8_t& reg8);
@@ -125,12 +127,12 @@ private:
     void bit_u3_r8(uint8_t& reg8, uint8_t bit_index);
     void res_u3_r8(uint8_t& reg8, uint8_t bit_index);
 
+    void sla_r8(uint8_t& reg8);
     void sra_r8(uint8_t& reg8);
     void srl_r8(uint8_t& reg8);
-    void sla_r8(uint8_t& reg8);
 
-    void rr_r8(uint8_t& reg8);
     void rl_r8(uint8_t& reg8);
+    void rr_r8(uint8_t& reg8);
 
     void rlc_r8(uint8_t& reg8);
     void rrc_r8(uint8_t& reg8);
@@ -138,6 +140,7 @@ private:
     // Miscellaneous 
     inline void daa();
 
+    // Interrupt Handling
     void check_interrupts();
     void handle_interrupt();
 };

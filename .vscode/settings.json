@@ -53,6 +53,13 @@
         "string": "cpp",
         "variant": "cpp",
         "xtree": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "algorithm": "cpp",
+        "any": "cpp",
+        "functional": "cpp",
+        "list": "cpp",
+        "optional": "cpp",
+        "unordered_map": "cpp",
+        "xhash": "cpp"
     }
 }
