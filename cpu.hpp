@@ -35,8 +35,7 @@ public:
     void test();
 
 private:
-    // Raw Pointer is fine as 
-    // Memory is gauranteed to live as long as CPU
+    // Raw Pointer is fine as Memory is gauranteed to live as long as CPU
     Memory* mem;
     
     enum class Flags 
@@ -118,7 +117,7 @@ private:
     void push_r16(uint16_t reg16);
     void pop_r16(uint16_t& reg16);
 
-    inline void call_nn(uint16_t nn);
+    inline void call_n16(uint16_t nn);
 
     // Bit manipulation
     void swap_r8(uint8_t& reg8);

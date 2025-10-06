@@ -9,6 +9,8 @@ const uint8_t CB_U3_BITMASK = 0b00111000;
 const uint8_t CB_OP_BITMASK = 0b00000111;
 
 const uint8_t LD_SRC_BITMASK = 0b00000111;
+const uint8_t LD_DST_BITMASK = 0b00111000;
+
 
 const uint8_t INC_OP_BITMASK = 0b00011100;
 
@@ -30,7 +32,7 @@ const uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
 Cpu::Cpu(Memory* _mem) :
     mem(_mem),
-    AF(), 
+     AF(), 
     BC(), 
     DE(), 
     HL(),
@@ -55,22 +57,16 @@ void print_reg(RegPair reg)
 // For Testing Purposes
 void Cpu::test()
 {
-    // 0b10001xxx
-    SP = HIGH_RAM_END;
-    PC = ROM_CODE_START;
+    BC.high = 0x77;
+    HL.r16 = WORK_RAM_START;
 
-    print_reg(SP);
-    print_reg(PC);
+    mem->write_byte(0x46, PC); // LD B, [HL]
+    mem->write_byte(0x11, HL.r16);
+    mem->write_byte(0xAA, PC + 2);
 
-    push_r16(PC);
+    execute_instruction();
 
-    print_reg(SP);
-    print_reg(PC);
-
-    pop_r16(PC);
-
-    print_reg(SP);
-    print_reg(PC);
+    print_reg(BC.high);
 }
 
 
@@ -164,8 +160,8 @@ inline bool check_half_borrow(uint8_t n1, uint8_t n2)
 
 inline uint16_t Cpu::read_next16()
 {
-    uint8_t low = mem->read_byte(++PC);
-    uint8_t high = mem->read_byte(++PC);
+    uint8_t low = mem->read_byte(PC++);
+    uint8_t high = mem->read_byte(PC++);
 
     return (high << 8) | low;
 }
@@ -282,7 +278,9 @@ void Cpu::execute_instruction()
 {    
     if (is_halted) return;
 
-    // IR = mem->read_byte(PC);
+    IR = mem->read_byte(PC++);
+
+    // ++PC;
 
     switch (IR)
     {
@@ -374,7 +372,7 @@ void Cpu::execute_instruction()
     {
         int i = IR >> 3;
         uint8_t& r8 = get_reg_ref(i);
-        r8 = mem->read_byte(++PC);
+        r8 = mem->read_byte(PC++);
         break;
     }
     
@@ -534,10 +532,10 @@ void Cpu::execute_instruction()
         break;
 
     // LD [HL], n8
-    // 12 T-scycles
+    // 12 T-cycles
     case 0x36:
     {
-        uint8_t n8 = mem->read_byte(++PC);
+        uint8_t n8 = mem->read_byte(PC++);
         mem->write_byte(n8, HL.r16);
         break;
     }
@@ -566,7 +564,7 @@ void Cpu::execute_instruction()
         set_flag(Flags::Carry, !check_flag(Flags::Carry)); 
         break;
     
-    // LD B, X
+    // LD B, r8
     // 0b01xxxyyy - xxx = src, yyy = dst
     // 4 T-cycles
     case 0x40:
@@ -579,7 +577,7 @@ void Cpu::execute_instruction()
         BC.high = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD C, X
+    // LD C, r8
     // 4 T-cycles
     case 0x48:    
     case 0x49:
@@ -591,7 +589,7 @@ void Cpu::execute_instruction()
         BC.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD D, X
+    // LD D, r8
     // 4 T-cycles
     case 0x50:
     case 0x51:
@@ -603,7 +601,7 @@ void Cpu::execute_instruction()
         DE.high = get_reg(IR & LD_SRC_BITMASK);
         break;
     
-    // LD E, X
+    // LD E, r8
     // 4 T-cycles
     case 0x58:
     case 0x59:
@@ -615,7 +613,7 @@ void Cpu::execute_instruction()
         DE.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD H, B
+    // LD H, r8
     // 4 T-cycles
     case 0x60:
     case 0x61:
@@ -627,7 +625,7 @@ void Cpu::execute_instruction()
         HL.high = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD L, X
+    // LD L, r8
     // 4 T-cycles
     case 0x68:
     case 0x69:
@@ -639,7 +637,7 @@ void Cpu::execute_instruction()
         HL.low = get_reg(IR & LD_SRC_BITMASK);
         break;
 
-    // LD [HL], X
+    // LD [HL], r8
     // 8 T-cycles
     case 0x70:
     case 0x71:
@@ -662,7 +660,7 @@ void Cpu::execute_instruction()
     case 0x6E:
     case 0x7E:
     {
-        uint8_t& reg = get_reg_ref(IR & LD_SRC_BITMASK);
+        uint8_t& reg = get_reg_ref(IR & LD_DST_BITMASK);
         reg = mem->read_byte(HL.r16);
         break;
     }
@@ -924,7 +922,7 @@ void Cpu::execute_instruction()
         if (check_condition_code(cc))
         {
             uint16_t imm16 = read_next16();
-            call_nn(imm16);
+            call_n16(imm16);
         }
         break;
     }
@@ -946,19 +944,19 @@ void Cpu::execute_instruction()
     // ADD A, n8
     // 8 T-cycles
     case 0xC6:
-        add_a(mem->read_byte(++PC));
+        add_a(mem->read_byte(PC++));
         break;
     // SUB A, n8
     case 0xD6:
-        sub_a(mem->read_byte(++PC));
+        sub_a(mem->read_byte(PC++));
         break;
     // AND A, n8
     case 0xE6:
-        and_a(mem->read_byte(++PC));
+        and_a(mem->read_byte(PC++));
         break;
     // OR A, n8
     case 0xF6:
-        or_a(mem->read_byte(++PC));
+        or_a(mem->read_byte(PC++));
         break;
 
     // RST vec
@@ -972,10 +970,8 @@ void Cpu::execute_instruction()
     case 0xEF:
     case 0xF7:
     case 0xFF:
-    {
-        call_nn(IR - 0xC7);
+        call_n16(static_cast<uint16_t>(IR - 0xC7));
         break;
-    }
 
     // RET
     // 16 T-cycles
@@ -994,7 +990,7 @@ void Cpu::execute_instruction()
     case 0xCD:
     {
         uint16_t imm16 = read_next16();
-        call_nn(imm16);
+        call_n16(imm16);
         
         break;
     }
@@ -1003,19 +999,19 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     // 2 bytes
     case 0xCE:
-        adc_a(mem->read_byte(++PC));
+        adc_a(mem->read_byte(PC++));
         break;
     // SBC A, n8
     case 0xDE:
-        sbc_a(mem->read_byte(++PC));
+        sbc_a(mem->read_byte(PC++));
         break;
     // XOR A, n8
     case 0xEE:
-        xor_a(mem->read_byte(++PC));
+        xor_a(mem->read_byte(PC++));
         break;
     // CP A, n8
     case 0xFE:
-        cp_a(mem->read_byte(++PC));
+        cp_a(mem->read_byte(PC++));
         break;
 
     // RETI
@@ -1031,7 +1027,7 @@ void Cpu::execute_instruction()
     // 2 bytes
     case 0xE0:
     {
-        uint8_t imm8 = mem->read_byte(++PC);
+        uint8_t imm8 = mem->read_byte(PC++);
         mem->write_byte(A, IO_REGISTERS_START + imm8);
         break;
     }
@@ -1048,7 +1044,7 @@ void Cpu::execute_instruction()
     // 2 bytes
     case 0xE8:
     {
-        int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
+        int8_t imm8 = static_cast<int8_t>(mem->read_byte(PC++));
         
         set_flag(Flags::Carry, check_carry(SP, imm8));
         set_flag(Flags::HalfCarry, check_half_carry(SP, imm8));
@@ -1081,7 +1077,7 @@ void Cpu::execute_instruction()
     // 2 bytes
     case 0xF0:
     {
-        uint8_t imm8 = mem->read_byte(++PC);
+        uint8_t imm8 = mem->read_byte(PC++);
         A = mem->read_byte(IO_REGISTERS_START + imm8);
         break;
     }
@@ -1104,7 +1100,7 @@ void Cpu::execute_instruction()
     // 2 bytes
     case 0xF8:
     {
-        int8_t imm8 = static_cast<int8_t>(mem->read_byte(++PC));
+        int8_t imm8 = static_cast<int8_t>(mem->read_byte(PC++));
 
         set_flag(Flags::Carry, check_carry(SP, imm8)); 
         set_flag(Flags::HalfCarry, check_half_carry(SP, imm8)); 
@@ -1146,12 +1142,12 @@ void Cpu::execute_instruction()
         break;
     }
 
-    ++PC;
+    check_interrupts();
 }
 
 void Cpu::cb_execute()
 {
-    IR = mem->read_byte(++PC);
+    IR = mem->read_byte(PC++);
 
     uint8_t u3 = (IR & CB_U3_BITMASK) >> 3;
     uint8_t op = IR & CB_OP_BITMASK;
@@ -1539,7 +1535,7 @@ void Cpu::add_hl_r16(uint16_t& r16)
 /* Branching */
 void Cpu::jr_e8()
 {
-    uint8_t byte = mem->read_byte(++PC);
+    uint8_t byte = mem->read_byte(PC);
     PC += static_cast<int8_t>(byte);
 }
 
@@ -1567,7 +1563,7 @@ void Cpu::pop_r16(uint16_t& reg)
 }
 
 
-inline void Cpu::call_nn(uint16_t addr) 
+inline void Cpu::call_n16(uint16_t addr) 
 {
     push_r16(PC);
 
@@ -1731,7 +1727,7 @@ void Cpu::rlc_r8(uint8_t& reg8)
 
     set_flag(Flags::Carry, msb == MSB_BITMASK);
     set_flag(Flags::Zero, reg8 == 0 && i != 7);
-} // Not Good
+} 
 
 // CB Prefix + 0b00000xxx
 // [0] -> [7 -> 0] -> C
@@ -1761,7 +1757,7 @@ inline void Cpu::daa()
     uint8_t offset = 0;
     bool is_subtraction = check_flag(Flags::Subtraction);
 
-    if ((!is_subtraction && (A & 0x0F > 0x09)) || check_flag(Flags::HalfCarry))
+    if ((!is_subtraction && ((A & 0x0F) > 0x09)) || check_flag(Flags::HalfCarry))
         offset |= 0x06;
 
     if ((!is_subtraction && A > 0x99) || check_flag(Flags::Carry))
@@ -1779,17 +1775,17 @@ inline void Cpu::daa()
 
 void Cpu::check_interrupts()
 {
-    if (mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG) != 0)
+    uint8_t interrupt_check = mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG);
+
+    if (interrupt_check != 0)
     {
         is_halted = false;
         
-        if (IME) 
-        { 
-            IME = false;
-            handle_interrupt();
+        if (IME) handle_interrupt();
+        else 
+        {
+            // Implement HALT Bug
         }
-
-        IME = true;
     }
 }
 
@@ -1799,41 +1795,38 @@ void Cpu::check_interrupts()
 // 4 T-cycles = set PC to Interrupt Address
 void Cpu::handle_interrupt()
 {
+    std::cout << "Handler" << std::endl;
+    IME = false;
+
     uint8_t interrupt_flag = mem->read_byte(INTERRUPT_FLAG);
     uint8_t interrupt = interrupt_flag & mem->read_byte(INTERRUPT_ENABLE);
 
-    if (interrupt & static_cast<uint8_t>(Interrupts::VBlank) != 0)
+    if ((interrupt & static_cast<uint8_t>(Interrupts::VBlank)) != 0)
     {
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
-        push_r16(PC);
-        PC = VBLANK_INTERRUPT_START;
+        call_n16(VBLANK_INTERRUPT_START);
     }
-
-    else if (interrupt & static_cast<uint8_t>(Interrupts::LCD) != 0)
+    else if ((interrupt & static_cast<uint8_t>(Interrupts::LCD)) != 0)
     {
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::LCD), INTERRUPT_FLAG);
-        push_r16(PC);
-        PC = STAT_INTERRUPT_START;
+        call_n16(SERIAL_INTERRUPT_START);
     }
 
-    else if (interrupt & static_cast<uint8_t>(Interrupts::Timer) != 0)
+    else if ((interrupt & static_cast<uint8_t>(Interrupts::Timer)) != 0)
     {
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Timer), INTERRUPT_FLAG);
-        push_r16(PC);
-        PC = TIMER_INTERRUPT_STARRT;
+        call_n16(TIMER_INTERRUPT_STARRT);
     }
 
-    else if (interrupt & static_cast<uint8_t>(Interrupts::Serial) != 0)
+    else if ((interrupt & static_cast<uint8_t>(Interrupts::Serial)) != 0)
     {
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Serial), INTERRUPT_FLAG);
-        push_r16(PC);
-        PC = SERIAL_INTERRUPT_START;
+        call_n16(SERIAL_INTERRUPT_START);
     }
 
-    else if (interrupt & static_cast<uint8_t>(Interrupts::JoyPad) != 0)
+    else if ((interrupt & static_cast<uint8_t>(Interrupts::JoyPad)) != 0)
     {
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
-        push_r16(PC);
-        PC = JOYPAD_INTERRUPT_START;
+        call_n16(JOYPAD_INTERRUPT_START);
     }
 }
