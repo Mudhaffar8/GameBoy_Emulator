@@ -3,36 +3,35 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
-#include <stdexcept>
+#include <stdexcept> // Should get rid of these soon
 
-const uint8_t CB_U3_BITMASK = 0b00111000;
-const uint8_t CB_OP_BITMASK = 0b00000111;
+constexpr uint8_t CB_U3_BITMASK = 0b00111000;
+constexpr uint8_t CB_OP_BITMASK = 0b00000111;
 
-const uint8_t LD_SRC_BITMASK = 0b00000111;
-const uint8_t LD_DST_BITMASK = 0b00111000;
+constexpr uint8_t LD_SRC_BITMASK = 0b00000111;
+constexpr uint8_t LD_DST_BITMASK = 0b00111000;
 
+constexpr uint8_t INC_OP_BITMASK = 0b00011100;
 
-const uint8_t INC_OP_BITMASK = 0b00011100;
+constexpr uint8_t HL_R16_BITMASK = 0b00110000;
 
-const uint8_t HL_R16_BITMASK = 0b00110000;
+constexpr uint8_t ARITHMETIC_OP_BITMASK = 0x07;
 
-const uint8_t ARITHMETIC_OP_BITMASK = 0x07;
+constexpr uint8_t MSB_BITMASK = 0x80;
+constexpr uint8_t LSB_BITMASK = 0x01;
 
-const uint8_t MSB_BITMASK = 0x80;
-const uint8_t LSB_BITMASK = 0x01;
+constexpr uint16_t MSB_BITMASK16 = 0x8000;
+constexpr uint16_t LSB_BITMASK16 = 0x1;
 
-const uint16_t MSB_BITMASK16 = 0x8000;
-const uint16_t LSB_BITMASK16 = 0x1;
+constexpr uint8_t CC_BITMASK = 0xA0;
+constexpr uint8_t CC_BITSHIFT_RIGHT = 2;
 
-const uint8_t CC_BITMASK = 0xA0;
-const uint8_t CC_BITSHIFT_RIGHT = 2;
-
-const uint8_t LOW_NIBBLE_MASK = 0x0F;
-const uint8_t HIGH_NIBBLE_MASK = 0xF0;
+constexpr uint8_t LOW_NIBBLE_MASK = 0x0F;
+constexpr uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
 Cpu::Cpu(Memory* _mem) :
     mem(_mem),
-     AF(), 
+    AF(), 
     BC(), 
     DE(), 
     HL(),
@@ -56,16 +55,23 @@ void print_reg(RegPair reg)
 
 // For Testing Purposes
 void Cpu::test()
-{
-    BC.high = 0x77;
-    HL.r16 = WORK_RAM_START;
+{    
+    mem->write_byte(0x13, PC); // JR cc, e8
+    mem->write_byte(0x76, PC + 1);
+    mem->write_byte(0x04, PC + 2);
 
-    mem->write_byte(0x46, PC); // LD B, [HL]
-    mem->write_byte(0x11, HL.r16);
-    mem->write_byte(0xAA, PC + 2);
+    execute_instruction();
+    execute_instruction();
+    execute_instruction();
+
+    print_reg(PC);
+
+    mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_ENABLE);
+    mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
 
     execute_instruction();
 
+    print_reg(PC);
     print_reg(BC.high);
 }
 
@@ -190,6 +196,7 @@ bool Cpu::check_condition_code(int cond)
     return false;
 }
 
+// TODO: Get rid of ALL Exception handling
 uint8_t Cpu::get_reg(int index)
 {
     switch (index)
@@ -276,11 +283,11 @@ uint16_t& Cpu::get_reg16_ref(int index)
 
 void Cpu::execute_instruction()
 {    
+    check_interrupts();
+
     if (is_halted) return;
 
     IR = mem->read_byte(PC++);
-
-    // ++PC;
 
     switch (IR)
     {
@@ -475,7 +482,7 @@ void Cpu::execute_instruction()
     case 0x28:
     case 0x38:
     {
-        uint8_t cc = (IR >> 3) & 0x07;
+        uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             jr_e8();
@@ -866,7 +873,7 @@ void Cpu::execute_instruction()
     case 0xD0:
     case 0xD8:
     {  
-        uint8_t cc = (IR >> 3) & 0x07;
+        uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             push_r16(PC);
@@ -895,7 +902,7 @@ void Cpu::execute_instruction()
     case 0xD2:
     case 0xDA:
     {
-        uint8_t cc = (IR >> 3) & 0x07;
+        uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             PC = read_next16();
@@ -918,7 +925,7 @@ void Cpu::execute_instruction()
     case 0xD4:
     case 0xDC:
     {
-        uint8_t cc = (IR >> 3) & 0x07;
+        uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             uint16_t imm16 = read_next16();
@@ -1784,7 +1791,7 @@ void Cpu::check_interrupts()
         if (IME) handle_interrupt();
         else 
         {
-            // Implement HALT Bug
+            // TODO: Implement HALT Bug
         }
     }
 }
