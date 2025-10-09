@@ -63,10 +63,10 @@ private:
     bool IME; // Unset when Game Starts Running
     bool is_halted; // Also Unset
 
-    uint32_t ticks; 
+    uint32_t ticks; // In T-cycles
 
     /* Instruction Execution */
-    void execute_instruction();
+    uint32_t execute_instruction();
     void cb_execute();
 
     /* Helper Methods */

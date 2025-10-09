@@ -29,16 +29,23 @@ constexpr uint8_t CC_BITSHIFT_RIGHT = 2;
 constexpr uint8_t LOW_NIBBLE_MASK = 0x0F;
 constexpr uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
+constexpr uint16_t DMG_AF_INIT = 0x01B0;
+constexpr uint16_t DMG_BC_INIT = 0x0013;
+constexpr uint16_t DMG_DE_INIT = 0x00D8;
+constexpr uint16_t DMG_HL_INIT = 0x014D;
+constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
+
+
 Cpu::Cpu(Memory* _mem) :
     mem(_mem),
-    AF(), 
-    BC(), 
-    DE(), 
-    HL(),
+    AF(DMG_AF_INIT), 
+    BC(DMG_BC_INIT), 
+    DE(DMG_DE_INIT), 
+    HL(DMG_HL_INIT),
     A(AF.high),
     F(AF.low),
     PC(),
-    SP(),
+    SP(DMG_SP_INIT),
     IR(),
     IME(false), 
     is_halted(false),
@@ -56,23 +63,20 @@ void print_reg(RegPair reg)
 // For Testing Purposes
 void Cpu::test()
 {    
-    mem->write_byte(0x13, PC); // JR cc, e8
-    mem->write_byte(0x76, PC + 1);
-    mem->write_byte(0x04, PC + 2);
-
-    execute_instruction();
-    execute_instruction();
-    execute_instruction();
-
-    print_reg(PC);
-
+    PC = 0x100;
+    IME = true;
     mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_ENABLE);
     mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
 
+    mem->write_byte(0x76, PC); // HALT
+
     execute_instruction();
 
+    // print_reg(PC);
+    // print_reg(static_cast<uint16_t>(((mem->read_byte(SP) << 8) | mem->read_byte(SP + 1))));
+
+    pop_r16(PC);
     print_reg(PC);
-    print_reg(BC.high);
 }
 
 
@@ -281,13 +285,15 @@ uint16_t& Cpu::get_reg16_ref(int index)
     }
 }
 
-void Cpu::execute_instruction()
+uint32_t Cpu::execute_instruction()
 {    
     check_interrupts();
 
     if (is_halted) return;
 
     IR = mem->read_byte(PC++);
+
+    ticks = 4;
 
     switch (IR)
     {
@@ -306,6 +312,8 @@ void Cpu::execute_instruction()
     {
         int i = IR >> 4;
         ld_r16_n16(get_reg16_ref(i));
+
+        ticks = 12;
         break;
     }
 
@@ -317,6 +325,8 @@ void Cpu::execute_instruction()
     {
         int i = IR >> 4;
         mem->write_byte(A, get_reg16(i));
+
+        ticks = 8;
         break;
     } 
     
@@ -331,6 +341,8 @@ void Cpu::execute_instruction()
         int i = IR >> 4;
         uint16_t& reg = get_reg16_ref(i);
         ++reg;
+
+        ticks = 8;
         break;
     }
 
@@ -380,12 +392,14 @@ void Cpu::execute_instruction()
         int i = IR >> 3;
         uint8_t& r8 = get_reg_ref(i);
         r8 = mem->read_byte(PC++);
+
+        ticks = 8;
         break;
     }
     
     // RLCA
     // 0x07
-    // 4 T-cycle
+    // 4 T-cycles
     case 0x07:
         rlc_r8(A);
         break;
@@ -400,6 +414,8 @@ void Cpu::execute_instruction()
 
         mem->write_byte(SP & 0xFF, n16);
         mem->write_byte(SP >> 8, n16 + 1);
+
+        ticks = 20;
         break;
     }
 
@@ -413,6 +429,8 @@ void Cpu::execute_instruction()
     {
         int i = IR >> 4;
         add_hl_r16(get_reg16_ref(i));
+
+        ticks = 8;
         break;
     }
 
@@ -424,6 +442,8 @@ void Cpu::execute_instruction()
     {
         int i = IR >> 4;
         A = mem->read_byte(get_reg16(i));
+
+        ticks = 8;
         break;
     }
 
@@ -438,6 +458,8 @@ void Cpu::execute_instruction()
         int i = IR >> 4;
         uint16_t& reg = get_reg16_ref(i);
         --reg;
+
+        ticks = 8;
         break;
     }
 
@@ -452,7 +474,7 @@ void Cpu::execute_instruction()
     // 4 T-cycles
     case 0x10:
         ++PC; // Ignore n8
-        is_halted = true;
+        // is_halted = true;
         break;
 
     
@@ -466,6 +488,8 @@ void Cpu::execute_instruction()
     // 12 T-cycles
     case 0x18:
         jr_e8();
+
+        ticks = 12;
         break;
     
     // RRA
@@ -482,10 +506,13 @@ void Cpu::execute_instruction()
     case 0x28:
     case 0x38:
     {
+        ticks = 8;
+
         uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             jr_e8();
+            ticks += 4;
         }
         break;
     }
@@ -495,10 +522,12 @@ void Cpu::execute_instruction()
     case 0x22:
         mem->write_byte(A, HL.r16);
         ++HL.r16;
+
+        ticks = 8;
         break;
 
     // DAA
-    // 4 T-cycless
+    // 4 T-cycles
     case 0x27:
         daa();
         break;
@@ -508,6 +537,8 @@ void Cpu::execute_instruction()
     case 0x2A:
         A = mem->read_byte(HL.r16);
         ++HL.r16;
+
+        ticks = 8;
         break;
     
     // CPL
@@ -524,18 +555,24 @@ void Cpu::execute_instruction()
     case 0x32:
         mem->write_byte(A, HL.r16);
         --HL.r16;
+
+        ticks = 8;
         break;
     
     // INC [HL]
     // 12 T-cycles
     case 0x34:
         inc_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 12;
         break;
     
     // DEC [HL]
     // 12 T-cycles
     case 0x35:
         dec_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 12;
         break;
 
     // LD [HL], n8
@@ -544,6 +581,8 @@ void Cpu::execute_instruction()
     {
         uint8_t n8 = mem->read_byte(PC++);
         mem->write_byte(n8, HL.r16);
+
+        ticks = 12;
         break;
     }
 
@@ -561,6 +600,8 @@ void Cpu::execute_instruction()
     case 0x3A:
         A = mem->read_byte(HL.r16);
         --HL.r16;
+
+        ticks = 8;
         break;
     
     // CCF
@@ -654,6 +695,8 @@ void Cpu::execute_instruction()
     case 0x75:
     case 0x77:
         mem->write_byte(get_reg(IR & LD_SRC_BITMASK), HL.r16);
+
+        ticks = 8;
         break;
     
     // LD r8, [HL]
@@ -669,15 +712,19 @@ void Cpu::execute_instruction()
     {
         uint8_t& reg = get_reg_ref(IR & LD_DST_BITMASK);
         reg = mem->read_byte(HL.r16);
+
+        ticks = 8;
         break;
     }
     
     // HALT
+    // 4 T-cycles
     case 0x76:
         is_halted = true;
         break;
 
     // LD A, r8
+    // 4 T-cycles
     case 0x78:
     case 0x79:
     case 0x7A:
@@ -708,6 +755,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles  
     case 0x86:
         add_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // ADC A, r8
@@ -730,6 +779,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0x8E:
         adc_a(mem->read_byte_ref(HL.r16));
+
+        ticks = 8;
         break;
 
     // SUB A, r8
@@ -752,6 +803,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0x96:
         sub_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // SBC A, r8
@@ -774,6 +827,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0x9E:
         sbc_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // AND A, r8
@@ -796,6 +851,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0xA6:
         and_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // XOR A, r8
@@ -818,6 +875,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0xAE:
         xor_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // OR A, r8
@@ -840,6 +899,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0xB6:
         or_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // CP A, r8
@@ -862,6 +923,8 @@ void Cpu::execute_instruction()
     // 8 T-cycles
     case 0xBE:
         cp_a(mem->read_byte(HL.r16));
+
+        ticks = 8;
         break;
 
     // 0b110xx000
@@ -873,10 +936,13 @@ void Cpu::execute_instruction()
     case 0xD0:
     case 0xD8:
     {  
+        ticks = 8;
+
         uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             push_r16(PC);
+            ticks += 12;
         }
         break;
     }
@@ -888,10 +954,14 @@ void Cpu::execute_instruction()
     case 0xD1:
     case 0xE1:
         pop_r16(get_reg16_ref((IR >> 4) & 0x03));
+
+        ticks = 12;
         break;
     // POP AF
     case 0xF1:
         pop_r16(AF.r16);
+
+        ticks = 12;
         break;
 
     // JP CC a16
@@ -902,18 +972,23 @@ void Cpu::execute_instruction()
     case 0xD2:
     case 0xDA:
     {
+        ticks = 12;
+
         uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             PC = read_next16();
+            ticks += 4;
         }
         break;
     }
     
     // JP a16
-    // 16 T-Cycles
+    // 16 T-cycles
     case 0xC3:
         PC = read_next16();
+        
+        ticks = 16;
         break;
 
     // CALL CC a16
@@ -925,11 +1000,15 @@ void Cpu::execute_instruction()
     case 0xD4:
     case 0xDC:
     {
+        ticks = 12;
+
         uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
             uint16_t imm16 = read_next16();
             call_n16(imm16);
+
+            ticks += 12;
         }
         break;
     }
@@ -942,28 +1021,40 @@ void Cpu::execute_instruction()
     case 0xD5:
     case 0xE5:
         push_r16(get_reg16((IR >> 4) & 0x03));
+
+        ticks = 16;
         break;
     // POP AF
     case 0xF5:
         push_r16(AF.r16);
+
+        ticks = 16;
         break;
 
     // ADD A, n8
     // 8 T-cycles
     case 0xC6:
         add_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // SUB A, n8
     case 0xD6:
         sub_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // AND A, n8
     case 0xE6:
         and_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // OR A, n8
     case 0xF6:
         or_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
 
     // RST vec
@@ -978,17 +1069,23 @@ void Cpu::execute_instruction()
     case 0xF7:
     case 0xFF:
         call_n16(static_cast<uint16_t>(IR - 0xC7));
+
+        ticks = 16;
         break;
 
     // RET
     // 16 T-cycles
     case 0xC9:
         push_r16(PC);
+
+        ticks = 16;
         break;
     
     // CB-Prefixed Opocodes
     case 0xCB:
         cb_execute();
+
+        ticks = 8;
         break;
 
     // CALL a16
@@ -999,6 +1096,7 @@ void Cpu::execute_instruction()
         uint16_t imm16 = read_next16();
         call_n16(imm16);
         
+        ticks = 24;
         break;
     }
 
@@ -1007,18 +1105,26 @@ void Cpu::execute_instruction()
     // 2 bytes
     case 0xCE:
         adc_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // SBC A, n8
     case 0xDE:
         sbc_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // XOR A, n8
     case 0xEE:
         xor_a(mem->read_byte(PC++));
+
+        ticks = 8;
         break;
     // CP A, n8
     case 0xFE:
         cp_a(mem->read_byte(PC++));
+        
+        ticks = 8;
         break;
 
     // RETI
@@ -1027,6 +1133,8 @@ void Cpu::execute_instruction()
     case 0xD9:
         push_r16(PC);
         IME = true;
+
+        ticks = 16;
         break;
 
     // LDH [a8], A
@@ -1036,6 +1144,8 @@ void Cpu::execute_instruction()
     {
         uint8_t imm8 = mem->read_byte(PC++);
         mem->write_byte(A, IO_REGISTERS_START + imm8);
+
+        ticks = 12;
         break;
     }
 
@@ -1044,6 +1154,8 @@ void Cpu::execute_instruction()
     // 1 byte
     case 0xE2:
         mem->write_byte(A, IO_REGISTERS_START + BC.low);
+
+        ticks = 8;
         break;
 
     // ADD SP, e8
@@ -1060,6 +1172,8 @@ void Cpu::execute_instruction()
 
         set_flag(Flags::Zero, false);
         set_flag(Flags::Subtraction, false);
+
+        ticks = 16;
         break;
     }
 
@@ -1076,6 +1190,8 @@ void Cpu::execute_instruction()
     {
         uint16_t imm16 = read_next16();
         mem->write_byte(A, imm16);
+
+        ticks = 16;
         break;
     }
 
@@ -1086,6 +1202,8 @@ void Cpu::execute_instruction()
     {
         uint8_t imm8 = mem->read_byte(PC++);
         A = mem->read_byte(IO_REGISTERS_START + imm8);
+
+        ticks = 12;
         break;
     }
 
@@ -1094,6 +1212,8 @@ void Cpu::execute_instruction()
     // 1 byte
     case 0xF2:
         A = mem->read_byte(IO_REGISTERS_START + BC.low);
+
+        ticks = 8;
         break;
 
     // DI
@@ -1116,6 +1236,8 @@ void Cpu::execute_instruction()
 
         set_flag(Flags::Zero, false);
         set_flag(Flags::Subtraction, false);
+
+        ticks = 12;
         break;
     }
 
@@ -1124,6 +1246,8 @@ void Cpu::execute_instruction()
     // 1 bytes
     case 0xF9:
         SP = HL.r16;
+
+        ticks = 8;
         break;
 
     // LD A, [a16]
@@ -1133,12 +1257,16 @@ void Cpu::execute_instruction()
     {
         uint16_t imm16 = read_next16();
         A = mem->read_byte(imm16);
+
+        ticks = 16;
         break;
     }
 
     // EI
     // Note: The effect of ei is delayed by one instruction. 
-    // This means that ei followed immediately by di does not allow any interrupts between them.
+    // This means that ei followed immediately by di does not 
+    // allow any interrupts between them.
+    // TODO: Implement the above
     // 4 T-cycles
     case 0xFB:
         IME = true;
@@ -1149,7 +1277,7 @@ void Cpu::execute_instruction()
         break;
     }
 
-    check_interrupts();
+    return ticks;
 }
 
 void Cpu::cb_execute()
@@ -1178,6 +1306,8 @@ void Cpu::cb_execute()
     // 16 T-cycles
     case 0x06:
         rlc_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // RRC r8
@@ -1197,6 +1327,8 @@ void Cpu::cb_execute()
     // 16 T-cycles
     case 0x0E:
         rrc_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // RL r8
@@ -1216,6 +1348,8 @@ void Cpu::cb_execute()
     // 16 T-cycles
     case 0x16:
         rl_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // RR r8
@@ -1235,6 +1369,8 @@ void Cpu::cb_execute()
     // 16 T-cycles
     case 0x1E:
         rr_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // SLA r8
@@ -1250,10 +1386,12 @@ void Cpu::cb_execute()
         sla_r8(get_reg_ref(op));
         break;
 
-    // RL [HL]
+    // SLA [HL]
     // 16 T-cycles
     case 0x26:
         sla_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // SRA r8
@@ -1269,10 +1407,12 @@ void Cpu::cb_execute()
         sra_r8(get_reg_ref(op));
         break;
 
-    // RR [HL]
+    // SRA [HL]
     // 16 T-cycles
     case 0x2E:
         sra_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // SWAP r8
@@ -1288,10 +1428,12 @@ void Cpu::cb_execute()
         swap_r8(get_reg_ref(op));
         break;
 
-    // RL [HL]
+    // SWAP [HL]
     // 16 T-cycles
     case 0x36:
         swap_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
 
     // SRL r8
@@ -1307,13 +1449,15 @@ void Cpu::cb_execute()
         srl_r8(get_reg_ref(op));
         break;
 
-    // RR [HL]
+    // SRL [HL]
     // 16 T-cycles
     case 0x3E:
         srl_r8(mem->read_byte_ref(HL.r16));
+
+        ticks = 16;
         break;
     
-    // Bit u3 r8
+    // Bit u3, r8
     // 01yyyxxx
     // 8 T-cycles
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: 
@@ -1325,7 +1469,9 @@ void Cpu::cb_execute()
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x77: 
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: 
         bit_u3_r8(get_reg_ref(op), u3);
+        break;
 
+    // Bit u3, r8
     // 12 T-cycles
     case 0x46:
     case 0x4E:
@@ -1336,9 +1482,11 @@ void Cpu::cb_execute()
     case 0x76:
     case 0x7E:
         bit_u3_r8(mem->read_byte_ref(HL.r16), u3);
+
+        ticks = 12;
         break;
 
-    // RES u3 r8
+    // RES u3, r8
     // 10yyyxxx
     // 8 T-cycles
     case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: 
@@ -1350,7 +1498,9 @@ void Cpu::cb_execute()
     case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB7: 
     case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF:
         res_u3_r8(get_reg_ref(op), u3);
+        break;
 
+    // RES u3, [HL]
     // 16 T-cycles
     case 0x86:
     case 0x8E:
@@ -1361,6 +1511,8 @@ void Cpu::cb_execute()
     case 0xB6:
     case 0xBE:
         res_u3_r8(mem->read_byte_ref(HL.r16), u3);
+
+        ticks = 16;
         break;
     
     // SET u3 r8
@@ -1374,9 +1526,10 @@ void Cpu::cb_execute()
     case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF7: 
     case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFF: 
         set_u3_r8(get_reg_ref(op), u3);
+        break;
 
-    // SET [HL]
-    // 16 T-cycless
+    // SET u3, [HL]
+    // 16 T-cycles
     case 0xC6:
     case 0xCE:
     case 0xD6:
@@ -1386,6 +1539,8 @@ void Cpu::cb_execute()
     case 0xF6:
     case 0xFE:
         set_u3_r8(mem->read_byte_ref(HL.r16), u3);
+
+        ticks = 16;
         break;
 
     default:

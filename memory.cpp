@@ -4,7 +4,7 @@
 #include <iostream>
 
 Memory::Memory() :
-    memory()
+    memory{0}
 {}
 
 bool Memory::load_cartridge(Cartridge& cartridge)
