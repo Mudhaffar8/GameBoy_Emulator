@@ -52,11 +52,11 @@ Cpu::Cpu(Memory* _mem) :
     ticks(0)
 {}
 
-void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << std::endl; }
-void print_reg(uint16_t reg) { std::cout << "0x" << std::hex << +reg << std::endl; }
+void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
+void print_reg(uint16_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
 void print_reg(RegPair reg) 
 { 
-    std::cout << std::hex << "High: 0x" << std::hex << +reg.high << ", " << "Low: 0x" << std::hex << +reg.low << std::endl; 
+    std::cout << std::hex << "High: 0x" << std::hex << +reg.high << ", " << "Low: 0x" << std::hex << +reg.low << ", "; 
 }
 
 
@@ -64,19 +64,54 @@ void print_reg(RegPair reg)
 void Cpu::test()
 {    
     PC = 0x100;
-    IME = true;
-    mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_ENABLE);
-    mem->write_byte(static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
+    A = 0x11;
+    F = 0xA0;
+    
+    mem->write_byte(0xF5, PC);
+    mem->write_byte(0xF1, PC + 1); 
 
-    mem->write_byte(0x76, PC); // HALT
+    uint32_t cycles = execute_instruction();
+    cycles = execute_instruction();
 
-    execute_instruction();
+    print_reg(AF);
+    std::cout << std::endl;
+    print_flags();
+}
 
-    // print_reg(PC);
-    // print_reg(static_cast<uint16_t>(((mem->read_byte(SP) << 8) | mem->read_byte(SP + 1))));
 
-    pop_r16(PC);
+void Cpu::print_registers()
+{
+    std::cout << "A: ";
+    print_reg(AF.high);
+  
+    std::cout << "F: ";
+    print_reg(AF.low);
+
+    std::cout << "B: ";
+    print_reg(BC.high);
+
+    std::cout << "C: ";
+    print_reg(BC.low);
+
+    std::cout << "D: ";
+    print_reg(DE.high);
+
+    std::cout << "E: ";
+    print_reg(DE.low);
+
+    std::cout << "H: ";
+    print_reg(HL.high);
+
+    std::cout << "L: ";
+    print_reg(HL.low);
+
+    std::cout << "PC: ";
     print_reg(PC);
+
+    std::cout << "SP: ";
+    print_reg(SP);
+
+    std::cout << '\n';
 }
 
 
@@ -116,8 +151,13 @@ inline bool check_carry(uint16_t n1, uint16_t n2)
     return (n1 + n2) > 0xFFFF;
 }
 
+// FIX
 inline bool check_carry(uint16_t n1, int8_t n2)
 {
+    // std::cout << "SP: " <<  +(n1 & 0xFF) << '\n';
+    // std::cout << "e8: " << std::abs(n2) << '\n';
+    // std::cout << ((n1 & 0xFF) + std::abs(n2)) << '\n';
+    // std::cout << 0xFF << '\n';
     return ((n1 & 0xFF) + n2) > 0xFF;
 }
 
@@ -141,9 +181,10 @@ inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
     return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
 }
 
+// FIX ME
 inline bool check_half_carry(uint16_t n1, int8_t n2)
 {
-    return ((n1 & 0xFFF) + n2) > 0xF;
+    return (n2 > 0) ? ((n1 & 0xF) + (n2 & 0xF)) > 0xF : false;
 }
 
 
@@ -289,7 +330,7 @@ uint32_t Cpu::execute_instruction()
 {    
     check_interrupts();
 
-    if (is_halted) return;
+    if (is_halted) return 0;
 
     IR = mem->read_byte(PC++);
 
@@ -402,6 +443,7 @@ uint32_t Cpu::execute_instruction()
     // 4 T-cycles
     case 0x07:
         rlc_r8(A);
+        set_flag(Flags::Zero, false);
         break;
 
     // LD [a16], SP
@@ -467,6 +509,7 @@ uint32_t Cpu::execute_instruction()
     // 4 T-cycles
     case 0x0F:
         rrc_r8(A);
+        set_flag(Flags::Zero, false);
         break;
     
     // STOP n8
@@ -482,6 +525,7 @@ uint32_t Cpu::execute_instruction()
     // 4 T-cycles
     case 0x17:
         rl_r8(A);
+        set_flag(Flags::Zero, false);
         break;
 
     // JR e8
@@ -496,6 +540,7 @@ uint32_t Cpu::execute_instruction()
     // 4 T-cycles
     case 0x1F:
         rr_r8(A);
+        set_flag(Flags::Zero, false);
         break;
     
     // JR cc, e8
@@ -710,7 +755,8 @@ uint32_t Cpu::execute_instruction()
     case 0x6E:
     case 0x7E:
     {
-        uint8_t& reg = get_reg_ref(IR & LD_DST_BITMASK);
+        int i = (IR & LD_DST_BITMASK) >> 3;
+        uint8_t& reg = get_reg_ref(i);
         reg = mem->read_byte(HL.r16);
 
         ticks = 8;
@@ -941,7 +987,7 @@ uint32_t Cpu::execute_instruction()
         uint8_t cc = (IR >> 3) & 0x03;
         if (check_condition_code(cc))
         {
-            push_r16(PC);
+            pop_r16(PC);
             ticks += 12;
         }
         break;
@@ -960,6 +1006,7 @@ uint32_t Cpu::execute_instruction()
     // POP AF
     case 0xF1:
         pop_r16(AF.r16);
+        F &= 0xF0;
 
         ticks = 12;
         break;
@@ -975,9 +1022,10 @@ uint32_t Cpu::execute_instruction()
         ticks = 12;
 
         uint8_t cc = (IR >> 3) & 0x03;
+        uint16_t addr = read_next16();
         if (check_condition_code(cc))
         {
-            PC = read_next16();
+            PC = addr;
             ticks += 4;
         }
         break;
@@ -1003,9 +1051,10 @@ uint32_t Cpu::execute_instruction()
         ticks = 12;
 
         uint8_t cc = (IR >> 3) & 0x03;
+        uint16_t imm16 = read_next16();
+
         if (check_condition_code(cc))
         {
-            uint16_t imm16 = read_next16();
             call_n16(imm16);
 
             ticks += 12;
@@ -1076,7 +1125,7 @@ uint32_t Cpu::execute_instruction()
     // RET
     // 16 T-cycles
     case 0xC9:
-        push_r16(PC);
+        pop_r16(PC);
 
         ticks = 16;
         break;
@@ -1515,7 +1564,7 @@ void Cpu::cb_execute()
         ticks = 16;
         break;
     
-    // SET u3 r8
+    // SET u3, r8
     // 8 T-cycles
     case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC7: 
     case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCF: 
@@ -1697,7 +1746,7 @@ void Cpu::add_hl_r16(uint16_t& r16)
 /* Branching */
 void Cpu::jr_e8()
 {
-    uint8_t byte = mem->read_byte(PC);
+    uint8_t byte = mem->read_byte(PC++);
     PC += static_cast<int8_t>(byte);
 }
 
@@ -1847,7 +1896,7 @@ void Cpu::rr_r8(uint8_t& reg8)
     reg8 |= (static_cast<uint8_t>(check_flag(Flags::Carry)) << 7);
 
     set_flag(Flags::Carry, lsb == LSB_BITMASK);
-    set_flag(Flags::Zero, reg8 == 0 && i != 7);
+    set_flag(Flags::Zero, reg8 == 0);
 }
 
 // CB Prefix + 0b00010xxx
@@ -1867,7 +1916,7 @@ void Cpu::rl_r8(uint8_t& reg8)
     reg8 |= static_cast<uint8_t>(check_flag(Flags::Carry));
 
     set_flag(Flags::Carry, msb == MSB_BITMASK);
-    set_flag(Flags::Zero, reg8 == 0 && i != 7);
+    set_flag(Flags::Zero, reg8 == 0);
 }
 
 // CB Prefix + 0b00000xxx
@@ -1880,7 +1929,6 @@ void Cpu::rlc_r8(uint8_t& reg8)
     set_flag(Flags::Subtraction, false);
     set_flag(Flags::HalfCarry, false);
 
-    int i = IR & CB_OP_BITMASK;
 
     uint8_t msb = reg8 & MSB_BITMASK;
     reg8 <<= 1;
@@ -1888,7 +1936,7 @@ void Cpu::rlc_r8(uint8_t& reg8)
     reg8 |= (msb >> 7);
 
     set_flag(Flags::Carry, msb == MSB_BITMASK);
-    set_flag(Flags::Zero, reg8 == 0 && i != 7);
+    set_flag(Flags::Zero, reg8 == 0);
 } 
 
 // CB Prefix + 0b00000xxx
@@ -1908,7 +1956,7 @@ void Cpu::rrc_r8(uint8_t& reg8)
     reg8 |= (lsb << 7);
 
     set_flag(Flags::Carry, lsb == LSB_BITMASK);
-    set_flag(Flags::Zero, reg8 == 0 && i != 7);
+    set_flag(Flags::Zero, reg8 == 0);
 }
 
 // 0b00100111/0x27
@@ -1931,8 +1979,8 @@ inline void Cpu::daa()
 
     A = (is_subtraction) ? A - offset : A + offset;
 
-    set_flag(Flags::HalfCarry, A == 0);
-    set_flag(Flags::Zero, true);
+    set_flag(Flags::Zero, A == 0);
+    set_flag(Flags::HalfCarry, false);
 }
 
 void Cpu::check_interrupts()
@@ -1991,4 +2039,6 @@ void Cpu::handle_interrupt()
         mem->write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
         call_n16(JOYPAD_INTERRUPT_START);
     }
+
+    ticks = 20;
 }

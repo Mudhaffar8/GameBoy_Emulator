@@ -33,18 +33,7 @@ public:
     Cpu(Memory* _mem);
 
     void test();
-
-private:
-    // Raw Pointer is fine as Memory is gauranteed to live as long as CPU
-    Memory* mem;
-    
-    enum class Flags 
-    {
-        Zero = 0x80,
-        Subtraction =  0x40,
-        Carry = 0x20,
-        HalfCarry = 0x10
-    };
+    void print_registers();
 
     RegPair AF, BC, DE, HL;
 
@@ -57,22 +46,36 @@ private:
     uint16_t SP; // Stack Pointer
 
     // 8-bit Instruction Register
+    bool IME; // Unset when Game Starts Running
+
+    uint32_t execute_instruction();
+    void print_flags() const;
+
+private:
+    // Raw Pointer is fine as Memory is gauranteed to live as long as CPU
+    Memory* mem;
+    
+    enum class Flags 
+    {
+        Zero = 0x80,
+        Subtraction = 0x40,
+        HalfCarry = 0x20,
+        Carry = 0x10
+    };
+    // 8-bit Instruction Register
     uint8_t IR;
 
     // Interrupt Master Enable
-    bool IME; // Unset when Game Starts Running
     bool is_halted; // Also Unset
 
     uint32_t ticks; // In T-cycles
 
     /* Instruction Execution */
-    uint32_t execute_instruction();
     void cb_execute();
 
     /* Helper Methods */
     inline void set_flag(Flags f, bool cond);
     bool check_flag(Flags f) const;
-    void print_flags() const;
 
     bool check_condition_code(int cond);
 

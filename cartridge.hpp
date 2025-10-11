@@ -32,10 +32,11 @@ const uint16_t DESTINATION_CODE = 0x014A;
 
 const uint16_t CARTRIDGE_TYPE = 0x0147;
 
+// We're going to need classes for different mappers
+// Make this Interface?
 class Cartridge
 {
 
 private:
-    /* Mapper mapper; */ // We're going to need classes for different mappers
     bool load_rom(const char* path);
 };
