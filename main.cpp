@@ -115,6 +115,7 @@ int main(int argc, char** argv)
             // IME = static_cast<uint8_t>((*it)["final"]["ime"]);
             // check_val(static_cast<uint8_t>(cpu.IME), IME, "IME");
 
+            // May not work - the interrupt enable register is sometimes written as "ie" or "ei" in the JSON test file
             // IE = static_cast<uint8_t>((*it)["final"]["ie"]);
             // check_val(mem.read_byte(INTERRUPT_ENABLE), IE, "IE");
 
