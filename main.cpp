@@ -36,7 +36,7 @@ int main(int argc, char** argv)
     // cpu.test();
 
     #if 1
-    std::ifstream file("v1/18.json"); 
+    std::ifstream file("v1/10.json"); 
     json data = json::parse(file);
 
     int test_number = 1;
@@ -54,6 +54,8 @@ int main(int argc, char** argv)
         cpu.HL.low = static_cast<uint8_t>((*it)["initial"]["l"]);
         cpu.PC = static_cast<uint16_t>((*it)["initial"]["pc"]);
         cpu.SP = static_cast<uint16_t>((*it)["initial"]["sp"]);
+
+        cpu.is_halted = false;
 
         // cpu.IME = static_cast<bool>((*it)["initial"]["ime"]);
         // mem.write_byte(static_cast<uint8_t>((*it)["initial"]["ie"]), INTERRUPT_ENABLE);

@@ -151,14 +151,9 @@ inline bool check_carry(uint16_t n1, uint16_t n2)
     return (n1 + n2) > 0xFFFF;
 }
 
-// FIX
 inline bool check_carry(uint16_t n1, int8_t n2)
 {
-    // std::cout << "SP: " <<  +(n1 & 0xFF) << '\n';
-    // std::cout << "e8: " << std::abs(n2) << '\n';
-    // std::cout << ((n1 & 0xFF) + std::abs(n2)) << '\n';
-    // std::cout << 0xFF << '\n';
-    return ((n1 & 0xFF) + n2) > 0xFF;
+    return ((n1 & 0xFF) + static_cast<uint8_t>(n2)) > 0xFF;
 }
 
 inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry)
@@ -181,10 +176,9 @@ inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
     return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
 }
 
-// FIX ME
 inline bool check_half_carry(uint16_t n1, int8_t n2)
 {
-    return (n2 > 0) ? ((n1 & 0xF) + (n2 & 0xF)) > 0xF : false;
+    return ((n1 & 0xF) + (n2 & 0xF)) > 0xF;
 }
 
 
@@ -195,13 +189,12 @@ inline bool check_borrow(uint8_t n1, uint8_t n2)
 
 inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 {
-    return n2 > (n1 + carry);
+    return (n2 + carry) > n1;
 }
 
-// May not be Sound
 inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 {
-    return (n2 & 0x0F) > ((n1 + carry) & 0x0F);
+    return ((n2 & 0x0F) + carry) > ((n1) & 0x0F);
 }
 
 inline bool check_half_borrow(uint8_t n1, uint8_t n2)
@@ -516,7 +509,6 @@ uint32_t Cpu::execute_instruction()
     // 0x10 + n8
     // 4 T-cycles
     case 0x10:
-        ++PC; // Ignore n8
         // is_halted = true;
         break;
 
@@ -1654,7 +1646,7 @@ void Cpu::sbc_a(uint8_t reg8)
     set_flag(Flags::Carry, check_borrow(A, reg8, carry));
     set_flag(Flags::HalfCarry, check_half_borrow(A, reg8, carry));
 
-    A += carry;
+    A -= carry;
     A -= reg8;
 
     set_flag(Flags::Zero, A == 0);

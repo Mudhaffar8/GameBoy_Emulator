@@ -47,6 +47,7 @@ public:
 
     // 8-bit Instruction Register
     bool IME; // Unset when Game Starts Running
+    bool is_halted; // Also Unset
 
     uint32_t execute_instruction();
     void print_flags() const;
@@ -66,7 +67,6 @@ private:
     uint8_t IR;
 
     // Interrupt Master Enable
-    bool is_halted; // Also Unset
 
     uint32_t ticks; // In T-cycles
 
