@@ -11,20 +11,10 @@ constexpr uint8_t CB_OP_BITMASK = 0b00000111;
 constexpr uint8_t LD_SRC_BITMASK = 0b00000111;
 constexpr uint8_t LD_DST_BITMASK = 0b00111000;
 
-constexpr uint8_t INC_OP_BITMASK = 0b00011100;
-
-constexpr uint8_t HL_R16_BITMASK = 0b00110000;
-
 constexpr uint8_t ARITHMETIC_OP_BITMASK = 0x07;
 
 constexpr uint8_t MSB_BITMASK = 0x80;
 constexpr uint8_t LSB_BITMASK = 0x01;
-
-constexpr uint16_t MSB_BITMASK16 = 0x8000;
-constexpr uint16_t LSB_BITMASK16 = 0x1;
-
-constexpr uint8_t CC_BITMASK = 0xA0;
-constexpr uint8_t CC_BITSHIFT_RIGHT = 2;
 
 constexpr uint8_t LOW_NIBBLE_MASK = 0x0F;
 constexpr uint8_t HIGH_NIBBLE_MASK = 0xF0;
@@ -163,7 +153,7 @@ inline bool check_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 
 inline bool check_half_carry(uint8_t n1, uint8_t n2)
 {
-    return ((n1 & 0xF) + (n2 & 0xF)) > 0xF;
+    return ((n1 & LOW_NIBBLE_MASK) + (n2 & LOW_NIBBLE_MASK)) > 0xF;
 }
 
 inline bool check_half_carry(uint16_t n1, uint16_t n2)
@@ -173,12 +163,12 @@ inline bool check_half_carry(uint16_t n1, uint16_t n2)
 
 inline bool check_half_carry(uint8_t n1, uint8_t n2, uint8_t carry)
 {
-    return ((n1 & 0xF) + (n2 & 0xF) + (carry & 0xF)) > 0xF;
+    return ((n1 & LOW_NIBBLE_MASK) + (n2 & LOW_NIBBLE_MASK) + (carry & LOW_NIBBLE_MASK)) > 0xF;
 }
 
 inline bool check_half_carry(uint16_t n1, int8_t n2)
 {
-    return ((n1 & 0xF) + (n2 & 0xF)) > 0xF;
+    return ((n1 & LOW_NIBBLE_MASK) + (n2 & LOW_NIBBLE_MASK)) > 0xF;
 }
 
 
@@ -194,12 +184,12 @@ inline bool check_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 
 inline bool check_half_borrow(uint8_t n1, uint8_t n2, uint8_t carry)
 {
-    return ((n2 & 0x0F) + carry) > ((n1) & 0x0F);
+    return ((n2 & LOW_NIBBLE_MASK) + (carry & LOW_NIBBLE_MASK)) > ((n1) & LOW_NIBBLE_MASK);
 }
 
 inline bool check_half_borrow(uint8_t n1, uint8_t n2)
 {
-    return (n2 & 0x0F) > (n1 & 0x0F);
+    return (n2 & LOW_NIBBLE_MASK) > (n1 & LOW_NIBBLE_MASK);
 }
 
 inline uint16_t Cpu::read_next16()
@@ -523,11 +513,14 @@ uint32_t Cpu::execute_instruction()
     // JR e8
     // 12 T-cycles
     case 0x18:
-        jr_e8();
+    {
+        uint8_t byte = mem->read_byte(PC++);
+        PC += static_cast<int8_t>(byte);
 
         ticks = 12;
         break;
-    
+    }
+
     // RRA
     // 4 T-cycles
     case 0x1F:
@@ -546,9 +539,10 @@ uint32_t Cpu::execute_instruction()
         ticks = 8;
 
         uint8_t cc = (IR >> 3) & 0x03;
+        uint8_t byte = mem->read_byte(PC++);
         if (check_condition_code(cc))
         {
-            jr_e8();
+            PC += static_cast<int8_t>(byte);
             ticks += 4;
         }
         break;
@@ -998,7 +992,7 @@ uint32_t Cpu::execute_instruction()
     // POP AF
     case 0xF1:
         pop_r16(AF.r16);
-        F &= 0xF0;
+        F &= HIGH_NIBBLE_MASK;
 
         ticks = 12;
         break;
@@ -1172,7 +1166,7 @@ uint32_t Cpu::execute_instruction()
     // 16 T-Cycles
     // 1 byte
     case 0xD9:
-        push_r16(PC);
+        pop_r16(PC);
         IME = true;
 
         ticks = 16;
@@ -1605,8 +1599,8 @@ void Cpu::adc_a(uint8_t reg8)
 {
     uint8_t carry = static_cast<uint8_t>(check_flag(Flags::Carry));
 
-    set_flag(Flags::Carry, check_carry(A, carry, reg8));
-    set_flag(Flags::HalfCarry, check_half_carry(A, carry, reg8));
+    set_flag(Flags::Carry, check_carry(A, reg8, carry));
+    set_flag(Flags::HalfCarry, check_half_carry(A, reg8, carry));
 
     A += reg8 + carry;
 
@@ -1735,13 +1729,7 @@ void Cpu::add_hl_r16(uint16_t& r16)
     set_flag(Flags::Subtraction, false);
 }
 
-/* Branching */
-void Cpu::jr_e8()
-{
-    uint8_t byte = mem->read_byte(PC++);
-    PC += static_cast<int8_t>(byte);
-}
-
+/* Stack Operations */
 void Cpu::push_r16(uint16_t reg)
 {
     // DEC SP
@@ -1779,8 +1767,8 @@ void Cpu::swap_r8(uint8_t& reg8)
 {
     int i = IR & CB_OP_BITMASK;
 
-    uint8_t low_nibble = reg8 & 0x0F;
-    uint8_t hi_nibble = (reg8 & 0xF0) >> 4;
+    uint8_t low_nibble = reg8 & LOW_NIBBLE_MASK;
+    uint8_t hi_nibble = (reg8 & HIGH_NIBBLE_MASK) >> 4;
 
     reg8 = (low_nibble << 4) | hi_nibble;
 
@@ -1959,7 +1947,7 @@ inline void Cpu::daa()
     uint8_t offset = 0;
     bool is_subtraction = check_flag(Flags::Subtraction);
 
-    if ((!is_subtraction && ((A & 0x0F) > 0x09)) || check_flag(Flags::HalfCarry))
+    if ((!is_subtraction && ((A & LOW_NIBBLE_MASK) > 0x09)) || check_flag(Flags::HalfCarry))
         offset |= 0x06;
 
     if ((!is_subtraction && A > 0x99) || check_flag(Flags::Carry))
@@ -1977,7 +1965,7 @@ inline void Cpu::daa()
 
 void Cpu::check_interrupts()
 {
-    uint8_t interrupt_check = mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG);
+    uint8_t interrupt_check = mem->read_byte(INTERRUPT_ENABLE) & mem->read_byte(INTERRUPT_FLAG) & HIGH_NIBBLE_MASK;
 
     if (interrupt_check != 0)
     {

@@ -113,9 +113,6 @@ private:
     // 16-bit Load Instructions
     void ld_r16_n16(uint16_t& reg16);
 
-    // Branching
-    void jr_e8();
-
     // Stack Operations
     void push_r16(uint16_t reg16);
     void pop_r16(uint16_t& reg16);
