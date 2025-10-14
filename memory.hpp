@@ -117,11 +117,12 @@ public:
     inline uint8_t read_byte(uint16_t address) const;
     inline uint8_t& read_byte_ref(uint16_t address);
     inline void write_byte(uint8_t byte, uint16_t address);
-    
-private:
-    uint8_t memory[MEMORY_SIZE];
 
     bool load_cartridge(Cartridge& cartridge);
+    bool load_rom(const char* path); // For Testing Purposes
+    
+    uint8_t memory[MEMORY_SIZE];
+private:
 };
 
 inline uint8_t Memory::read_byte(uint16_t address) const

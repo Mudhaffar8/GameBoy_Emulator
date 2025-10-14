@@ -104,7 +104,6 @@ void Cpu::print_registers()
     std::cout << '\n';
 }
 
-
 /* Flag Functions - All Flag Functions work */
 inline void Cpu::set_flag(Flags f, bool cond)
 {

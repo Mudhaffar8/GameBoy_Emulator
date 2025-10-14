@@ -33,23 +33,10 @@ public:
     Cpu(Memory* _mem);
 
     void test();
-    void print_registers();
-
-    RegPair AF, BC, DE, HL;
-
-    // Special Registers
-    uint8_t& A; // Accumulator
-    uint8_t& F; // Flags
-
-    // 16-bit Registers
-    uint16_t PC; // Program Counter
-    uint16_t SP; // Stack Pointer
-
-    // 8-bit Instruction Register
-    bool IME; // Unset when Game Starts Running
-    bool is_halted; // Also Unset
-
+    
     uint32_t execute_instruction();
+    
+    void print_registers();
     void print_flags() const;
 
 private:
@@ -63,10 +50,24 @@ private:
         HalfCarry = 0x20,
         Carry = 0x10
     };
+
+    RegPair AF, BC, DE, HL;
+
+    // Special Registers
+    uint8_t& A; // Accumulator
+    uint8_t& F; // Flags
+
+    // 16-bit Registers
+    uint16_t PC; // Program Counter
+    uint16_t SP; // Stack Pointer
+
+    // Interrupt Master Enable
+    bool IME; // Unset when Game Starts Running
+    bool is_halted; // Also Unset
+
     // 8-bit Instruction Register
     uint8_t IR;
 
-    // Interrupt Master Enable
 
     uint32_t ticks; // In T-cycles
 
