@@ -1,6 +1,7 @@
 #include "cartridge.hpp"
 
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 
 Cartridge::Cartridge(size_t rom_size, size_t ram_size)
@@ -56,7 +57,8 @@ bool perform_checksum(uint8_t header[])
 // Will add support for MBCs soon enough
 bool read_header(const char* path)
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
 
     if (!file.is_open()) 
     {
@@ -64,7 +66,7 @@ bool read_header(const char* path)
         return false;
     }
 
-    if (file.gcount() < HEADER_SIZE)
+    if (file_size < HEADER_SIZE)
     {
         std::cerr << "File size is too small" << std::endl;
         return false;

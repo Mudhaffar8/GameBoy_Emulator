@@ -1,6 +1,7 @@
 #include "memory.hpp"
 
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 
 Memory::Memory() :
@@ -14,7 +15,8 @@ bool Memory::load_cartridge(Cartridge& cartridge)
 
 bool Memory::load_rom(const char* path)
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
 
     if (!file.is_open()) 
     {
@@ -22,19 +24,19 @@ bool Memory::load_rom(const char* path)
         return false;
     }
 
-    if (file.gcount() > MEMORY_SIZE)
+    if (file_size > MEMORY_SIZE)
     {
         std::cerr << "File size is too large" << std::endl;
         return false;
     }
 
     std::vector<uint8_t> buffer;
-    buffer.reserve(file.gcount());
+    buffer.reserve(file_size);
 
     file.seekg(0, std::ios::beg);
-    file.read(reinterpret_cast<char*>(buffer.data()), sizeof(buffer) / sizeof(uint8_t));
+    file.read(reinterpret_cast<char*>(buffer.data()), file_size);
 
-    memcpy(memory, buffer.data(), sizeof(buffer));
+    memcpy(memory, buffer.data(), file_size);
 
     return true;
 }

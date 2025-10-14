@@ -43,7 +43,7 @@ const uint16_t GLOBAL_CHECKSUM_LOW = 0x014F;
 
 const uint16_t HEADER_SIZE = 0x0150;
 
-constexpr enum class CartridgeType 
+enum class CartridgeType 
 {
     RomOnly = 0x00,
     MBC1 = 0x01,
