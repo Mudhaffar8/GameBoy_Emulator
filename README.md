@@ -3,13 +3,13 @@
 This is a work-in-progress GameBoy emulator written in C++, with plans to integrate SDL3 soon. The primary goal of this project is to create a fast, memory-efficient emulator that can run smoothly even on older hardware.
 
 ## Current Features
-- Full implementation of all 501 GameBoy opcodes, with most instructions tested for correctness and accurate flag behavior.
+- Full implementation of all 501 GameBoy opcodes, with all instructions (excpet for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83).
 - Interrupt handling implemented and tested.
-- T-cycles for all instructions documented.
-- Basic memory mapping, including some I/O registers.
+- Cycle counting for all instructions complete
+- (Almost) all I/O registers memory-mapped.
 
 ## Planned Updates
-- Accurate CPU timing and cycle counting.
+- Implementation of the Timer.
 - Basic implementation of the Pixel Processing Unit (PPU).
 
 This project is in active development, so stay tuned for updates.
