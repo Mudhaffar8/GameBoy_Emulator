@@ -1,18 +1,9 @@
 #pragma once
 
 #include "memory.hpp"
+#include "interrupts.hpp"
 
 #include <cstdint>
-
-enum class Interrupts
-{
-    VBlank = 0x01,
-    LCD = 0x02,
-    Timer = 0x04,
-    Serial = 0x08,
-    JoyPad = 0x10
-};
-
 
 struct RegPair
 {
@@ -30,7 +21,7 @@ struct RegPair
 class Cpu
 {
 public:
-    Cpu(Memory* _mem);
+    Cpu(Memory& em);
 
     void test();
     
@@ -40,10 +31,9 @@ public:
     void print_flags() const;
 
 private:
-    // Raw Pointer is fine as Memory is gauranteed to live as long as CPU
-    Memory* mem;
+    Memory& mem;
     
-    enum class Flags 
+    enum class Flags : uint8_t
     {
         Zero = 0x80,
         Subtraction = 0x40,
@@ -67,7 +57,6 @@ private:
 
     // 8-bit Instruction Register
     uint8_t IR;
-
 
     uint32_t ticks; // In T-cycles
 

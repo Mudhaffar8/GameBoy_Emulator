@@ -16,7 +16,6 @@ bool Memory::load_cartridge(Cartridge& cartridge)
 bool Memory::load_rom(const char* path)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
 
     if (!file.is_open()) 
     {
@@ -24,6 +23,7 @@ bool Memory::load_rom(const char* path)
         return false;
     }
 
+    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
     if (file_size > MEMORY_SIZE)
     {
         std::cerr << "File size is too large" << std::endl;

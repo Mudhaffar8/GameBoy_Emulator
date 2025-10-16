@@ -70,12 +70,12 @@ constexpr uint16_t JOYPAD_INPUT = 0xFF00;
 constexpr uint16_t SERIAL_TRANSFER_DATA = 0xFF01;
 constexpr uint16_t SERIAL_TRANSFER_CONTROL = 0xFF02;
 
-constexpr uint16_t DIVIDER_REGISTER = 0xFF04;
-
 /* Timer Registers*/
-constexpr uint16_t TIMER_COUNTER = 0xFF05;
-constexpr uint16_t TIMER_MODULO = 0xFF06;
-constexpr uint16_t TIMER_CONTROL = 0xFF07;
+constexpr uint16_t DIVIDER_REGISTER = 0xFF04; // DIV
+
+constexpr uint16_t TIMER_COUNTER = 0xFF05; // TIMA
+constexpr uint16_t TIMER_MODULO = 0xFF06; // TMA
+constexpr uint16_t TIMER_CONTROL = 0xFF07; // TAC
 
 constexpr uint16_t INTERRUPT_FLAG = 0xFF0F; 
 
@@ -121,10 +121,11 @@ public:
     bool load_cartridge(Cartridge& cartridge);
     bool load_rom(const char* path); // For Testing Purposes
     
-    uint8_t memory[MEMORY_SIZE];
 private:
+    uint8_t memory[MEMORY_SIZE];
 };
 
+// TODO: Perform checks to prevent illegal read/writes to memory
 inline uint8_t Memory::read_byte(uint16_t address) const
 {
     return memory[address];
