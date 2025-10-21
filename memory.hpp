@@ -4,6 +4,7 @@
 
 #include <cstdint>
 
+// TODO: Add namespaces
 constexpr size_t MEMORY_SIZE = 0x10000;
 
 constexpr uint16_t BOOT_ROM_START = 0x0000;

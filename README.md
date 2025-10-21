@@ -7,9 +7,9 @@ This is a work-in-progress GameBoy emulator written in C++, with plans to integr
 - Interrupt handling implemented and tested.
 - Cycle counting for all instructions complete
 - (Almost) all I/O registers memory-mapped.
+- Basic implementation of the Timer (still needs to be tested).
 
 ## Planned Updates
-- Implementation of the Timer.
 - Basic implementation of the Pixel Processing Unit (PPU).
 
 This project is in active development, so stay tuned for updates.

@@ -7,6 +7,8 @@
 
 struct RegPair
 {
+    // Assumes Little-Endian
+    // TODO?: Check for endianness
     union
     {
         struct { uint8_t low, high; }; 

@@ -73,6 +73,7 @@
         "span": "cpp",
         "sstream": "cpp",
         "valarray": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "random": "cpp"
     }
 }

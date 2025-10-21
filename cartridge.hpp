@@ -3,8 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-const int ROM_MAX_SIZE = 0x8000;
-const int MBC1_MAX_SIZE = 0x10000;
+// TODO: Add namespaces
 
 /* Cartridge Header */
 const uint16_t ENTRY_POINT_START = 0x0100;

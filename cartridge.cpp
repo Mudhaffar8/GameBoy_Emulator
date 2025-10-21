@@ -3,11 +3,13 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <exception>
 
 Cartridge::Cartridge(size_t rom_size, size_t ram_size)
+ : rom(), ram()
 {
-    std::vector<uint8_t> _rom;
-    _rom.reserve(rom_size);
+    rom.reserve(rom_size);
+    ram.reserve(ram_size);
 }
 
 bool nintendo_logo_check(uint8_t header[])
@@ -41,15 +43,16 @@ bool perform_checksum(uint8_t header[])
     return checksum == header[HEADER_CHECKSUM];
 }
 
-// Cartridge* get_cartridge(int cartridge_type, size_t rom_size, size_t ram_size)
+// Cartridge get_cartridge(int cartridge_type, size_t rom_size, size_t ram_size)
 // {
 //     switch (cartridge_type)
 //     {
 //         case static_cast<int>(CartridgeType::RomOnly):
-//             return new Cartridge(rom_size, ram_size);
-
+//             return Cartridge(rom_size, ram_size);
+//
 //         default:
-//             return nullptr;
+//             throw std::runtime_error("Unimplemented Cartridge Type");
+//             break;
 //     } 
 // }
 
@@ -58,7 +61,6 @@ bool perform_checksum(uint8_t header[])
 bool read_header(const char* path)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
 
     if (!file.is_open()) 
     {
@@ -66,13 +68,14 @@ bool read_header(const char* path)
         return false;
     }
 
+    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
     if (file_size < HEADER_SIZE)
     {
         std::cerr << "File size is too small" << std::endl;
         return false;
     }
 
-    uint8_t header[HEADER_SIZE] = { 0 };
+    uint8_t header[HEADER_SIZE]{ 0 };
 
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(header), sizeof(header) / sizeof(uint8_t));

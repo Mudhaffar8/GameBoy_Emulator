@@ -41,7 +41,7 @@ Cpu::Cpu(Memory& _mem) :
     IR(),
     IME(false), 
     is_halted(false),
-    ticks(0)
+    ticks(1)
 {}
 
 void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
@@ -94,7 +94,7 @@ void Cpu::print_registers()
     std::cout << '\n';
 }
 
-/* Flag Functions - All Flag Functions work */
+/* Flag Functions */
 inline void Cpu::set_flag(Flags f, bool cond)
 {
     F = (cond) ? (F | static_cast<uint8_t>(f)) : (F & ~static_cast<uint8_t>(f));
