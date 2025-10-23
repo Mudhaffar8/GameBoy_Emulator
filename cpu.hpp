@@ -24,12 +24,12 @@ class Cpu
 {
 public:
     Cpu(Memory& em);
+    
+    uint32_t execute_instruction();
 
     void test();
     
-    uint32_t execute_instruction();
-    
-    void print_registers();
+    void print_registers() const;
     void print_flags() const;
 
 private:
@@ -46,21 +46,21 @@ private:
     RegPair AF, BC, DE, HL;
 
     // Special Registers
-    uint8_t& A; // Accumulator
-    uint8_t& F; // Flags
+    uint8_t& A = AF.high; // Accumulator
+    uint8_t& F = AF.low; // Flags
 
     // 16-bit Registers
     uint16_t PC; // Program Counter
     uint16_t SP; // Stack Pointer
 
     // Interrupt Master Enable
-    bool IME; // Unset when Game Starts Running
-    bool is_halted; // Also Unset
+    bool IME = false; // Unset when Game Starts Running
+    bool is_halted = false; // Also Unset
 
     // 8-bit Instruction Register
-    uint8_t IR;
+    uint8_t IR = 0;
 
-    uint32_t ticks; // In T-cycles
+    uint32_t ticks = 0; // In T-cycles
 
     /* Instruction Execution */
     void cb_execute();

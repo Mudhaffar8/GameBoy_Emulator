@@ -117,27 +117,16 @@ public:
 
     inline uint8_t read_byte(uint16_t address) const;
     inline uint8_t& read_byte_ref(uint16_t address);
-    inline void write_byte(uint8_t byte, uint16_t address);
 
     bool load_cartridge(Cartridge& cartridge);
     bool load_rom(const char* path); // For Testing Purposes
-    
+
+    inline void write_byte(uint8_t byte, uint16_t address) { memory[address] = byte; }
+
 private:
-    uint8_t memory[MEMORY_SIZE];
+    uint8_t memory[MEMORY_SIZE]{};
 };
 
 // TODO: Perform checks to prevent illegal read/writes to memory
-inline uint8_t Memory::read_byte(uint16_t address) const
-{
-    return memory[address];
-}
-
-inline uint8_t& Memory::read_byte_ref(uint16_t address)
-{
-    return memory[address];
-}
-
-inline void Memory::write_byte(uint8_t byte, uint16_t address)
-{
-    memory[address] = byte;
-}
+inline uint8_t Memory::read_byte(uint16_t address) const { return memory[address]; }
+inline uint8_t& Memory::read_byte_ref(uint16_t address) { return memory[address]; }

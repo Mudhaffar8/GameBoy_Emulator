@@ -34,14 +34,9 @@ Cpu::Cpu(Memory& _mem) :
     BC(DMG_BC_INIT), 
     DE(DMG_DE_INIT), 
     HL(DMG_HL_INIT),
-    A(AF.high),
-    F(AF.low),
     PC(),
     SP(DMG_SP_INIT),
-    IR(),
-    IME(false), 
-    is_halted(false),
-    ticks(1)
+    IR()
 {}
 
 void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
@@ -59,7 +54,7 @@ void Cpu::test()
 }
 
 
-void Cpu::print_registers()
+void Cpu::print_registers() const
 {
     std::cout << "A: ";
     print_reg(AF.high);

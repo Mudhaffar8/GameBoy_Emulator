@@ -4,11 +4,14 @@
 
 #include "memory.hpp"
 
-constexpr int GAMEBOY_SCREEN_WIDTH = 160;
-constexpr int GAMEBOY_SCREEN_HEIGHT = 144;
+namespace GBResolution
+{
+constexpr int WIDTH = 160;
+constexpr int HEIGHT = 144;
+}
 
 // Order probably be wrong
-struct GbObject
+struct GBObject
 {
     struct 
     {
@@ -27,12 +30,12 @@ struct GbObject
 class Ppu
 {
 public:
-    Ppu(Memory& mem);
+    Ppu(Memory* mem);
 
     void tick(uint32_t cycles);
 
 private:
-    Memory& mem;
+    Memory* mem;
 
     enum class PpuModes
     {
@@ -42,7 +45,7 @@ private:
         Drawing
     };
 
-    PpuModes ppu_mode;
+    PpuModes ppu_mode = PpuModes::HBlank;
 
-    uint32_t cycles_elapsed;
+    uint32_t cycles_elapsed = 0;
 };

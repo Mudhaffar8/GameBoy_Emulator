@@ -4,8 +4,7 @@
 #include <filesystem>
 #include <iostream>
 
-Memory::Memory() :
-    memory{0}
+Memory::Memory()
 {}
 
 bool Memory::load_cartridge(Cartridge& cartridge)
@@ -15,7 +14,7 @@ bool Memory::load_cartridge(Cartridge& cartridge)
 
 bool Memory::load_rom(const char* path)
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    std::ifstream file(path, std::ios::in | std::ios::binary);
 
     if (!file.is_open()) 
     {
@@ -36,7 +35,7 @@ bool Memory::load_rom(const char* path)
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(buffer.data()), file_size);
 
-    memcpy(memory, buffer.data(), file_size);
+    std::copy(buffer.begin(), buffer.end(), memory);
 
     return true;
 }
