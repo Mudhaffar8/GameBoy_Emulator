@@ -46,24 +46,24 @@ enum class CartridgeType
 {
     RomOnly = 0x00,
     MBC1 = 0x01,
-    MBC1_Ram = 0x02,
-    MBC1_Ram_Battery = 0x03,
+    MBC1Ram = 0x02,
+    MBC1RamBattery = 0x03,
     MBC2 = 0x05,
-    MBC2_Battery = 0x06,
-    Rom_Ram = 0x08,
-    Rom_Ram_Battery = 0x09,
-    MBC3_Timer_Battery = 0x0F,
-    MBC3_Timer_Ram_Battery = 0x10,
+    MBC2Battery = 0x06,
+    RomRam = 0x08,
+    RomRamBattery = 0x09,
+    MBC3TimerBattery = 0x0F,
+    MBC3TimerRam_Battery = 0x10,
     MBC3 = 0x11
 };
 
 enum class RamSize
 {
     NoRam = 0x00,
-    Bank_8K = 0x02,
-    Bank_32K = 0x03,
-    Bank_128K = 0x04,
-    Bank_64K = 0x05
+    Bank8K = 0x02,
+    Bank32K = 0x03,
+    Bank128K = 0x04,
+    Bank64K = 0x05
 };
 
 // We're going to need classes for different mappers

@@ -4,15 +4,15 @@
 #include <filesystem>
 #include <iostream>
 
-Memory::Memory()
+Mmu::Mmu()
 {}
 
-bool Memory::load_cartridge(Cartridge& cartridge)
+bool Mmu::load_cartridge(Cartridge& cartridge)
 {
     return false;
 }
 
-bool Memory::load_rom(const char* path)
+bool Mmu::load_rom(const char* path)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary);
 

@@ -1,10 +1,12 @@
 #include <stdexcept>
 
 #include "display.hpp"
+#include <iostream>
 
 // #include <SDL3/SDL_render.h>
 
-Display::Display()
+Display::Display(Ppu* _ppu) : 
+    ppu(_ppu)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) 
     {
@@ -78,27 +80,34 @@ void Display::handle_input(bool* key_input)
     }
 }
 
-void Display::update_screen(const uint8_t* buffer)
+void Display::update_screen()
 {
     int pitch = 0;
     uint32_t* pixels = nullptr;
 
-    SDL_LockTexture(texture, NULL, (void**)(&pixels), &pitch);
+    SDL_LockTexture(texture, nullptr, (void**)(&pixels), &pitch);
 
-    for (int y = 0; y < GBResolution::HEIGHT; ++y) 
-    {
-        for (int x = 0; x < GBResolution::WIDTH; ++x) 
-        {   
-            int index = y * GBResolution::WIDTH + x;
-            int pitch_index = y * (pitch / sizeof(uint32_t)) + x;
-
-            pixels[pitch_index] = buffer[index] == 0 ? ColourSpecs::COLOUR00 : ColourSpecs::COLOUR11; 
-        }
-    }
+    std::copy(ppu->frame_buffer, ppu->frame_buffer + GBResolution::DIMENSIONS, pixels);
 
     SDL_UnlockTexture(texture);
 
     SDL_RenderClear(renderer);
-    SDL_RenderTexture(renderer, texture, NULL, NULL);
+    SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+}
+
+void Display::update_screen(const uint32_t* frame_buffer)
+{
+    int pitch = 0;
+    uint32_t* pixels = nullptr;
+
+    SDL_LockTexture(texture, nullptr, (void**)(&pixels), &pitch);
+
+    std::copy(frame_buffer, frame_buffer + GBResolution::DIMENSIONS, pixels);
+
+    SDL_UnlockTexture(texture);
+
+    SDL_RenderClear(renderer);
+    SDL_RenderTexture(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 }

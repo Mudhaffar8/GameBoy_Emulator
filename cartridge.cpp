@@ -5,11 +5,10 @@
 #include <iostream>
 #include <exception>
 
-Cartridge::Cartridge(size_t rom_size, size_t ram_size)
- : rom(), ram()
+Cartridge::Cartridge(size_t rom_size, size_t ram_size) : 
+    rom(rom_size), 
+    ram(ram_size)
 {
-    rom.reserve(rom_size);
-    ram.reserve(ram_size);
 }
 
 bool nintendo_logo_check(uint8_t header[])

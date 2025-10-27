@@ -8,14 +8,14 @@
 class Timer
 {
 public:
-    Timer(Memory& memory);
+    Timer(Mmu& memory);
     
     void tick(uint32_t cycles);
 
 private:
     const int clock_select_freq[4] = { 1024, 16, 64, 256 };
 
-    Memory& mem;
+    Mmu& mem;
 
     uint8_t& DIV, TIMA, TMA, TAC;
 

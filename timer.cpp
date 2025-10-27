@@ -1,6 +1,6 @@
 #include "timer.hpp"
 
-Timer::Timer(Memory& _mem) : 
+Timer::Timer(Mmu& _mem) : 
     mem(_mem),
     DIV(mem.read_byte_ref(DIVIDER_REGISTER)),
     TIMA(mem.read_byte_ref(TIMER_CONTROL)),
@@ -33,7 +33,7 @@ void Timer::tick(uint32_t cycles)
             if (TIMA == 0xFF)
             {
                 TIMA = TMA;
-                GbInterrupts::request_interrupt(mem, GbInterrupts::Interrupts::Timer);
+                GBInterrupts::request_interrupt(mem, GBInterrupts::Interrupts::Timer);
             } 
             else ++TIMA;
 

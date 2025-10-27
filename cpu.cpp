@@ -5,7 +5,7 @@
 #include <cstring>
 #include <stdexcept> // Should get rid of these soon
 
-using Interrupts = GbInterrupts::Interrupts;
+using Interrupts = GBInterrupts::Interrupts;
 
 constexpr uint8_t CB_U3_BITMASK = 0b111000;
 constexpr uint8_t CB_OP_BITMASK = 0b111;
@@ -28,7 +28,7 @@ constexpr uint16_t DMG_HL_INIT = 0x014D;
 constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
 
 
-Cpu::Cpu(Memory& _mem) :
+Cpu::Cpu(Mmu& _mem) :
     mem(_mem),
     AF(DMG_AF_INIT), 
     BC(DMG_BC_INIT), 
@@ -50,7 +50,14 @@ void print_reg(RegPair reg)
 // For Testing Purposes
 void Cpu::test()
 {    
-    // request_interrupt(mem, Interrupts::LCD);
+    // GBInterrupts::request_interrupt(mem, Interrupts::JoyPad);
+
+    mem.write_byte(0x00, PC);
+    mem.write_byte(0x00, PC + 1);
+
+    execute_instruction();
+
+    print_reg(PC);
 }
 
 

@@ -74,6 +74,8 @@
         "sstream": "cpp",
         "valarray": "cpp",
         "bitset": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "deque": "cpp",
+        "queue": "cpp"
     }
 }

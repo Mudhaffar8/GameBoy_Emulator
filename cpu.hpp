@@ -23,7 +23,7 @@ struct RegPair
 class Cpu
 {
 public:
-    Cpu(Memory& em);
+    Cpu(Mmu& mem);
     
     uint32_t execute_instruction();
 
@@ -33,7 +33,7 @@ public:
     void print_flags() const;
 
 private:
-    Memory& mem;
+    Mmu& mem;
     
     enum class Flags : uint8_t
     {
@@ -60,17 +60,19 @@ private:
     // 8-bit Instruction Register
     uint8_t IR = 0;
 
+    // Cycle counting
     uint32_t ticks = 0; // In T-cycles
 
     /* Instruction Execution */
     void cb_execute();
 
-    /* Helper Methods */
+    /* Flag methods */
     inline void set_flag(Flags f, bool cond);
     bool check_flag(Flags f) const;
 
     bool check_condition_code(int cond);
 
+    /* Helper methods */
     uint8_t get_reg(int index);
     uint8_t& get_reg_ref(int index);
 

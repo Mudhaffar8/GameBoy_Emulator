@@ -4,7 +4,7 @@
 
 #include "memory.hpp"
 
-namespace GbInterrupts
+namespace GBInterrupts
 {
 enum class Interrupts : uint8_t 
 {
@@ -15,9 +15,9 @@ enum class Interrupts : uint8_t
     JoyPad = 0x10
 };
 
-void request_interrupt(Memory& mem, Interrupts interrupt);
+void request_interrupt(Mmu& mem, Interrupts interrupt);
 
-inline bool is_interrupt_queued(Memory& mem, Interrupts interrupt);
-inline bool is_interrupt_requested(Memory& mem, Interrupts interrupt);
-inline bool is_interrupt_enabled(Memory& mem, Interrupts interrupt);
+inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt);
+inline bool is_interrupt_requested(Mmu& mem, Interrupts interrupt);
+inline bool is_interrupt_enabled(Mmu& mem, Interrupts interrupt);
 }

@@ -29,12 +29,19 @@ constexpr uint16_t BANK_N_END = 0x7FFF;
 
 /* RAM */
 /* VRAM */
-constexpr uint16_t TILE_MAP_START = 0x8000; 
-constexpr uint16_t TILE_MAP_END = 0x97FF;
+constexpr uint16_t TILE_DATA_ADDR0_START = 0x8000; 
+constexpr uint16_t TILE_DATA_ADDR1_START = 0x8800;
+constexpr uint16_t TILE_DATA_END = 0x97FF;
 
-constexpr uint16_t BG_MAP_START = 0x9800; 
-constexpr uint16_t BG_MAP_END = 0x9FFF;
+/* Tile Map Data */
+constexpr uint16_t TILE_MAP_START = 0x9800; 
+constexpr uint16_t TILE_MAP_END = 0x9FFF;
 
+constexpr uint16_t BG_TILE_MAP_START = 0x9800; 
+constexpr uint16_t BG_TILE_MAP_END = 0x9BFF;
+
+constexpr uint16_t WINDOW_TILE_MAP_START = 0x9C00; 
+constexpr uint16_t WINDOW_TILE_MAP_END = 0x9FFF;
 
 /* Cartridge RAM */
 constexpr uint16_t CARTRIDGE_RAM_START = 0xA000; 
@@ -110,10 +117,10 @@ constexpr uint16_t INTERRUPT_ENABLE = 0xFFFF;
 constexpr uint16_t HIGH_RAM_START = 0xFF80;
 constexpr uint16_t HIGH_RAM_END = 0xFFFE;
 
-class Memory
+class Mmu
 {
 public:
-    Memory();
+    Mmu();
 
     inline uint8_t read_byte(uint16_t address) const;
     inline uint8_t& read_byte_ref(uint16_t address);
@@ -128,5 +135,5 @@ private:
 };
 
 // TODO: Perform checks to prevent illegal read/writes to memory
-inline uint8_t Memory::read_byte(uint16_t address) const { return memory[address]; }
-inline uint8_t& Memory::read_byte_ref(uint16_t address) { return memory[address]; }
+inline uint8_t Mmu::read_byte(uint16_t address) const { return memory[address]; }
+inline uint8_t& Mmu::read_byte_ref(uint16_t address) { return memory[address]; }
