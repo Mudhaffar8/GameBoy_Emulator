@@ -34,34 +34,36 @@ uint32_t Ppu::get_tile_colour(uint8_t bit2)
 
 void Ppu::render_frame()
 {
-    for (int x = 0; x < 20; ++x)
+    for (int y = 0; y < GBResolution::HEIGHT; ++y)
     {
-        for (int y = 0; y < 8; ++y)
-        {
-            for (tile_map_i = x * 20; tile_map_i < (x * 20) + 20; ++tile_map_i)
-            {
-                std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(y);
-                decode_tile_row(tile_row.first, tile_row.second, tile_map_i, y);
-            }
-        }
+        render_scanline();
     }
 }
 
 void Ppu::render_scanline()
 {
-    for (tile_map_i = 0; tile_map_i < 20; ++tile_map_i)
+    for (int x = 0; x < GBResolution::NUM_OF_TILES; ++x)
     {
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(0);
-        decode_tile_row(tile_row.first, tile_row.second, tile_map_i, 0);
+        int bg_map_x = scanline_x + scroll_x;
+        int bg_map_y = scanline_y + scroll_y;
+        
+        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(bg_map_x, bg_map_y);
+        decode_tile_row(tile_row.first, tile_row.second, bg_map_x, bg_map_y);
     }
+
+    scanline_x = 0;
+    ++scanline_y;
 }
 
 void Ppu::render_tile()
 {
-    for (int y = 0; y < 8; ++y)
+    for (; scanline_y < 8; ++scanline_y)
     { 
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(y);
-        decode_tile_row(tile_row.first, tile_row.second, 0, y);
+        int bg_map_x = scanline_x + scroll_x;
+        int bg_map_y = scanline_y + scroll_y;
+
+        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(bg_map_x, bg_map_y);
+        decode_tile_row(tile_row.first, tile_row.second, 0, bg_map_y);
     }
 }
 
@@ -70,32 +72,36 @@ void Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int y)
 {   
     for (int i = 7; i >= 0; --i)
     {
+        // Scroll-x MOD 8
         uint8_t msb = (lo_byte >> i) & 0x01;
         uint8_t lsb = (hi_byte >> i) & 0x01;
 
-        // std::cout << ((GBResolution::WIDTH) * y + (x * 8) + i) << ", ";
+        // std::cout << ((GBResolution::WIDTH) * y + x + i) << " (";
 
-        frame_buffer[(GBResolution::WIDTH) * y + (x * 8) + i] = get_tile_colour((msb << 1) | lsb);
+        frame_buffer[(GBResolution::WIDTH) * y + x + i] = get_tile_colour((msb << 1) | lsb);
+
+        // std::cout << "(" << get_tile_colour((msb << 1) | lsb) << ") (" << y << ", " << x + i << ")";
+
+        ++scanline_x;
     }
-
-    // std::cout << '\n';
 }
 
 /**
- * @param tile_row_i - Rep. which row of a specific tile to fetch (from 0 to 7)
  * @returns the first and second byte of a tile representing one tile row
  */
-std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_row_i)
-{
+std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int bg_map_x, int bg_map_y)
+{ 
     // Assume Tile addressing mode one for now
     // Bit 4 of LCDC
-
     // Get tile ID on current tile being operated on
     // Only doing BG tile map for now
-    uint8_t tile_id = mmu->read_byte(BG_TILE_MAP_START + tile_map_i);
 
-    uint16_t offset = TILE_DATA_ADDR0_START + (tile_id * 16) + (tile_row_i * 2);
-    // int offset = TILE_DATA_ADDR1_START + (static_cast<int8_t>(tile_number) * 16);
+    // BG_TILE_MAP_START + (bg_map_y * GBResolution::WIDTH_WHOLE) + bg_map_x
+    int tile_id_offset = (bg_map_x / 8) + (GBResolution::NUM_OF_TILES_WHOLE * (bg_map_y / 8)); 
+    uint8_t tile_id = mmu->read_byte(BG_TILE_MAP_START + tile_id_offset);
+
+    uint16_t offset = TILE_DATA_ADDR0_START + (tile_id * 16) + ((bg_map_y % 8) * 2);
+    // int offset = TILE_DATA_ADDR1_START + (static_cast<int8_t>(tile_id) * 16);
 
     // Get first two bytes of tile data to obtain one tile row
     uint8_t tile_line_first_byte = mmu->read_byte(offset);

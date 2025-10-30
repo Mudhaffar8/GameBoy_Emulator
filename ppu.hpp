@@ -9,9 +9,11 @@
 namespace GBResolution
 {
 constexpr int WIDTH = 160;
+constexpr int WIDTH_WHOLE = 256;
 constexpr int HEIGHT = 144;
 constexpr int DIMENSIONS = WIDTH * HEIGHT;
-constexpr int NUM_OF_TILES = 32;
+constexpr int NUM_OF_TILES = 20;
+constexpr int NUM_OF_TILES_WHOLE = 32;
 }
 
 namespace GBColours
@@ -26,6 +28,15 @@ static const uint32_t COLOUR11 = 0x000000FF;
 const int CYCLES_PER_SCANLINE = 456;
 const int CYCLES_PER_FRAME = 70224;
 const int CYCLES_OAM = 80;
+
+constexpr int NUM_TILES_X = 20;
+constexpr int NUM_TILES_TOTAL = NUM_TILES_X * NUM_TILES_X;
+
+const int TILE_DATA_LEN = 16;
+const int TILE_DATA_LINE_LEN = 2;
+
+constexpr int NUM_OF_SCANLINES = 144;
+constexpr int NUM_OF_VISIBLE_SCANLINES = NUM_OF_SCANLINES - 10;
 
 // Order probably be wrong
 struct GBObject
@@ -51,6 +62,7 @@ struct GBPixelFIFO
     uint8_t priority;
 };
 
+
 class Ppu
 {
 public:
@@ -63,15 +75,16 @@ public:
     void render_frame();
     void render_tile();
     void render_scanline();
+
     void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int j);
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_row_i);
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int bg_map_x, int bg_map_y);
     uint32_t get_tile_colour(uint8_t bit2);
 
     uint32_t frame_buffer[GBResolution::DIMENSIONS]{};
 private:
     Mmu* mmu;
 
-    enum class PpuModes
+    enum class PpuModes : uint8_t
     {
         HBlank,
         VBlank,
@@ -83,6 +96,11 @@ private:
 
     PpuModes ppu_mode = PpuModes::HBlank;
 
-    int tile_map_i = 0; // Index of the tile map currently being operated on
+    int scanline_x = 0;
+    int scanline_y = 0;
+
+    int scroll_x = 0;
+    int scroll_y = 0;
+
     uint32_t cycles_elapsed = 0;
 };

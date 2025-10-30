@@ -26,30 +26,15 @@ void ppu_test()
     Ppu ppu(&mmu);
     Display display(&ppu);
 
-    // 0xAA, 0xAA, 0x55, 0x55, 0xAA, 0xAA, 0x55, 0x55, 0xAA, 0xAA, 0x55, 0x55, 0xAA, 0xAA, 0x55, 0x55,
-    for (int j = 0; j < 0x1800; j++)
-    {
-        mmu.write_byte(0xA5, TILE_DATA_ADDR0_START + j);
-        // for (int i = 0; i < 16; i += 4)
-        // {
-        //     mmu.write_byte(0xAA, TILE_DATA_ADDR0_START + j);
-        //     mmu.write_byte(0xAA, TILE_DATA_ADDR0_START + j + 1 + i);
-        //     mmu.write_byte(0x55, TILE_DATA_ADDR0_START + j + 2 + i);
-        //     mmu.write_byte(0x55, TILE_DATA_ADDR0_START + j + 3 + i);
-        // }
-    }
-
     auto start = std::chrono::steady_clock::now();
 
-    ppu.render_scanline();
+    ppu.render_frame();
+    display.update_screen();
 
     auto end = std::chrono::steady_clock::now();
     auto diff = end - start;
 
     std::cout << diff.count();
-
-    display.update_screen();
-
 
     SDL_Delay(3000);
 }

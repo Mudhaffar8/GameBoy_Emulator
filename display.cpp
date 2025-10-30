@@ -3,7 +3,7 @@
 #include "display.hpp"
 #include <iostream>
 
-// #include <SDL3/SDL_render.h>
+#include <SDL3/SDL_keyboard.h>
 
 Display::Display(Ppu* _ppu) : 
     ppu(_ppu)

@@ -3,12 +3,13 @@
 #include <cstdint>
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_keyboard.h>
 
 #include "ppu.hpp"
 
 class Display
 {
+    friend class Ppu;
+
 public:
     Display(Ppu* ppu);
     ~Display();
@@ -23,7 +24,6 @@ public:
 
 private:
     Ppu* ppu;
-    friend class Ppu;
 
     SDL_Window* window;
     SDL_Renderer* renderer;

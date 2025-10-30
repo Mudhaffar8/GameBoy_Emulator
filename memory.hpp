@@ -43,7 +43,7 @@ constexpr uint16_t BG_TILE_MAP_END = 0x9BFF;
 constexpr uint16_t WINDOW_TILE_MAP_START = 0x9C00; 
 constexpr uint16_t WINDOW_TILE_MAP_END = 0x9FFF;
 
-/* Cartridge RAM */
+/* Switchable Cartridge RAM */
 constexpr uint16_t CARTRIDGE_RAM_START = 0xA000; 
 constexpr uint16_t CARTRIDGE_RAM_END = 0xBFFF;
 
