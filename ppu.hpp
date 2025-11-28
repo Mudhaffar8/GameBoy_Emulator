@@ -38,6 +38,7 @@ const int TILE_DATA_LINE_LEN = 2;
 constexpr int NUM_OF_SCANLINES = 144;
 constexpr int NUM_OF_VISIBLE_SCANLINES = NUM_OF_SCANLINES - 10;
 
+
 // Order probably be wrong
 struct GBObject
 {
@@ -66,23 +67,24 @@ struct GBPixelFIFO
 class Ppu
 {
 public:
-    Ppu(Mmu* mmu);
+    Ppu(Mmu& mmu);
 
     void test();
 
     void tick(uint32_t cycles);
 
+    uint32_t get_tile_colour(uint8_t bit2);
+
+    void render_scanline();
     void render_frame();
     void render_tile();
-    void render_scanline();
 
     void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int j);
     std::pair<uint8_t, uint8_t> fetch_tile_row(int bg_map_x, int bg_map_y);
-    uint32_t get_tile_colour(uint8_t bit2);
 
     uint32_t frame_buffer[GBResolution::DIMENSIONS]{};
 private:
-    Mmu* mmu;
+    Mmu& mmu;
 
     enum class PpuModes : uint8_t
     {

@@ -8,10 +8,8 @@
 
 class Display
 {
-    friend class Ppu;
-
 public:
-    Display(Ppu* ppu);
+    Display(Ppu& ppu);
     ~Display();
 
     void handle_input(bool* buffer);
@@ -23,7 +21,7 @@ public:
     inline void set_scale_factor(int scale_factor) { this->scale_factor = scale_factor; }
 
 private:
-    Ppu* ppu;
+    Ppu& ppu;
 
     SDL_Window* window;
     SDL_Renderer* renderer;

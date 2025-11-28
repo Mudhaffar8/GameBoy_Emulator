@@ -8,10 +8,9 @@
 Cartridge::Cartridge(size_t rom_size, size_t ram_size) : 
     rom(rom_size), 
     ram(ram_size)
-{
-}
+{}
 
-bool nintendo_logo_check(uint8_t header[])
+bool nintendo_logo_check(uint8_t header[HEADER_SIZE])
 {
     const uint8_t nintendo_logo[NINTENDO_LOGO_LEN] = {
         0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 
@@ -31,7 +30,7 @@ bool nintendo_logo_check(uint8_t header[])
     return true;
 }
 
-bool perform_checksum(uint8_t header[])
+bool perform_checksum(uint8_t header[HEADER_SIZE])
 {
     uint8_t checksum = 0;
     for (uint16_t i = TITLE_START; i <= ROM_VERSION; ++i) 
@@ -46,7 +45,7 @@ bool perform_checksum(uint8_t header[])
 // {
 //     switch (cartridge_type)
 //     {
-//         case static_cast<int>(CartridgeType::RomOnly):
+//         case CartridgeType::RomOnly:
 //             return Cartridge(rom_size, ram_size);
 //
 //         default:
@@ -59,7 +58,7 @@ bool perform_checksum(uint8_t header[])
 // Will add support for MBCs soon enough
 bool read_header(const char* path)
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::beg);
 
     if (!file.is_open()) 
     {
@@ -76,7 +75,6 @@ bool read_header(const char* path)
 
     uint8_t header[HEADER_SIZE]{ 0 };
 
-    file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(header), sizeof(header) / sizeof(uint8_t));
 
 	file.close();

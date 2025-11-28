@@ -5,7 +5,7 @@
 
 #include <SDL3/SDL_keyboard.h>
 
-Display::Display(Ppu* _ppu) : 
+Display::Display(Ppu& _ppu) : 
     ppu(_ppu)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) 
@@ -87,7 +87,7 @@ void Display::update_screen()
 
     SDL_LockTexture(texture, nullptr, (void**)(&pixels), &pitch);
 
-    std::copy(ppu->frame_buffer, ppu->frame_buffer + GBResolution::DIMENSIONS, pixels);
+    std::copy(ppu.frame_buffer, ppu.frame_buffer + GBResolution::DIMENSIONS, pixels);
 
     SDL_UnlockTexture(texture);
 

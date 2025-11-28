@@ -5,7 +5,6 @@
 #include <cstring>
 #include <stdexcept> // Should get rid of these soon
 
-using Interrupts = GBInterrupts::Interrupts;
 
 constexpr uint8_t CB_U3_BITMASK = 0b111000;
 constexpr uint8_t CB_OP_BITMASK = 0b111;
@@ -1976,6 +1975,8 @@ void Cpu::check_interrupts()
 // 4 T-cycles = set PC to Interrupt Address
 void Cpu::handle_interrupt()
 {
+    using Interrupts = GBInterrupts::Interrupts;
+
     std::cout << "Handler" << std::endl;
     IME = false;
 

@@ -22,6 +22,7 @@ constexpr uint16_t BANK_ZERO_START = 0x0000;
 constexpr uint16_t BANK_ZERO_END = 0x3FFF;
 
 constexpr uint16_t ROM_CODE_START = 0x0150; 
+constexpr uint16_t ROM_CODE_END = 0x7FFF;
 
 /* Bank N - Switchable ROM Bank */
 constexpr uint16_t BANK_N_START = 0x4000;
@@ -70,7 +71,6 @@ constexpr uint16_t IO_REGISTERS_END = 0xFF7F;
 
 // 5.Select buttons	 4.Select d-pad  3.Start/Down  2.Select/Up  1.B/Left  0.A/Right
 // if select d-pad set to 0, lower nibble contains directional inputs
-// I/O  Registers
 constexpr uint16_t JOYPAD_INPUT = 0xFF00;
 
 // Serial Transfers
@@ -125,15 +125,18 @@ public:
     inline uint8_t read_byte(uint16_t address) const;
     inline uint8_t& read_byte_ref(uint16_t address);
 
+    inline void write_byte(uint8_t byte, uint16_t address);
+
     bool load_cartridge(Cartridge& cartridge);
     bool load_rom(const char* path); // For Testing Purposes
 
-    inline void write_byte(uint8_t byte, uint16_t address) { memory[address] = byte; }
 
 private:
     uint8_t memory[MEMORY_SIZE]{};
 };
 
 // TODO: Perform checks to prevent illegal read/writes to memory
+inline void Mmu::write_byte(uint8_t byte, uint16_t address) { memory[address] = byte; }
+
 inline uint8_t Mmu::read_byte(uint16_t address) const { return memory[address]; }
 inline uint8_t& Mmu::read_byte_ref(uint16_t address) { return memory[address]; }

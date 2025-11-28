@@ -42,30 +42,6 @@ const uint16_t GLOBAL_CHECKSUM_LOW = 0x014F;
 
 const uint16_t HEADER_SIZE = 0x0150;
 
-enum class CartridgeType 
-{
-    RomOnly = 0x00,
-    MBC1 = 0x01,
-    MBC1Ram = 0x02,
-    MBC1RamBattery = 0x03,
-    MBC2 = 0x05,
-    MBC2Battery = 0x06,
-    RomRam = 0x08,
-    RomRamBattery = 0x09,
-    MBC3TimerBattery = 0x0F,
-    MBC3TimerRam_Battery = 0x10,
-    MBC3 = 0x11
-};
-
-enum class RamSize
-{
-    NoRam = 0x00,
-    Bank8K = 0x02,
-    Bank32K = 0x03,
-    Bank128K = 0x04,
-    Bank64K = 0x05
-};
-
 // We're going to need classes for different mappers
 // Make this Interface?
 class Cartridge
@@ -73,9 +49,35 @@ class Cartridge
 public:
     Cartridge(size_t rom_size, size_t ram_size);
     
+    enum CartridgeType 
+    {
+        RomOnly = 0x00,
+        MBC1 = 0x01,
+        MBC1Ram = 0x02,
+        MBC1RamBattery = 0x03,
+        MBC2 = 0x05,
+        MBC2Battery = 0x06,
+        RomRam = 0x08,
+        RomRamBattery = 0x09,
+        MBC3TimerBattery = 0x0F,
+        MBC3TimerRam_Battery = 0x10,
+        MBC3 = 0x11
+    };
+
+    enum RamSize
+    {
+        NoRam = 0x00,
+        Bank8K = 0x02,
+        Bank32K = 0x03,
+        Bank128K = 0x04,
+        Bank64K = 0x05
+    };
+    
 private:
     std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
+
+    int curr_rom_bank{}, curr_ram_bank{};
 };
 
 bool read_header(const char* path);
