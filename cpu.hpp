@@ -30,7 +30,7 @@ struct RegPair
 class Cpu
 {
 public:
-    Cpu(Memory* _mem);
+    Cpu(Mmu* _mem);
 
     void test();
     void print_registers();
@@ -54,7 +54,7 @@ public:
 
 private:
     // Raw Pointer is fine as Memory is gauranteed to live as long as CPU
-    Memory* mem;
+    Mmu* mem;
     
     enum class Flags 
     {

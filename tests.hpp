@@ -49,12 +49,16 @@ namespace GBTests
     }
 
     /// @brief Runs instruction tests over a specified opcode range.
+    /// @param cpu
+    /// @param cpu
     /// @param start First opcode (inclusive). Must be > 0x00.
     /// @param end Last opcode (exclusive). Must be < 0x100.
     /// @param instructions_to_skip List of opcodes not tested.
     /// @param is_cb If true, tester runs CB-prefixed opcodes instead.
     /// @note Assertions enforce that start < end, start > 0x00, and end < 0x100.
     void run_tests(
+        Cpu& cpu,
+        Mmu& mem,
         int start = 0x00, 
         int end = 0x100, 
         const std::vector<int>& instructions_to_skip = {},
@@ -64,10 +68,7 @@ namespace GBTests
         assert(start < end);
         assert(end <= 0x100);
         assert(start >= 0x0);
-
-        Memory mem;
-        Cpu cpu(&mem);
-
+        
         for (int i = start; i < end; ++i)
         {
             // Skip if current instructions should be skipped

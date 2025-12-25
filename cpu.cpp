@@ -26,7 +26,7 @@ constexpr uint16_t DMG_HL_INIT = 0x014D;
 constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
 
 
-Cpu::Cpu(Memory* _mem) :
+Cpu::Cpu(Mmu* _mem) :
     mem(_mem),
     AF(DMG_AF_INIT), 
     BC(DMG_BC_INIT), 
@@ -40,7 +40,9 @@ Cpu::Cpu(Memory* _mem) :
     IME(false), 
     is_halted(false),
     ticks(0)
-{}
+{
+    assert(mem != nullptr);
+}
 
 void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
 void print_reg(uint16_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }

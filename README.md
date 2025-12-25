@@ -124,6 +124,7 @@ This readme contains the results of running the single step tests for the SM83. 
 ### Skipped Opcodes
 
 - `0x69`: Calls interrupt handler somehow. Works fine on its own
+- `0xD9`: Also calls interrupt handler. Works fine on its own.
 - `0xFB`: Contains specific behavior not implemented for `EI` and also not really important either.
 
 ### Weird Behaviours
@@ -144,7 +145,7 @@ Running tests from `0xCB 0x00 - 0xCB 0xFF`:
 
 - Testing opcodes: `0x00 - 0x7F` (Excluding 0x69): OK ✅
 - Testing opcodes: `0x80 - 0xBF`: OK ✅
-- Testing opcodes: `0xC0 - 0xDF`: OK ✅
+- Testing opcodes: `0xC0 - 0xDF` (Excluding 0xD9): OK ✅
 - Testing opcodes: `0xE0 - 0xFF` (Excluding 0xFB): OK ✅
 - Testing opcodes: `0xCB 00 - 0xCB FF`: OK ✅
 
