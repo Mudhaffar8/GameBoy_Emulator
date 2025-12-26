@@ -3,6 +3,7 @@
 #include "cartridge.hpp"
 
 #include <cstdint>
+#include <array>
 
 // TODO: Add namespaces
 constexpr size_t MEMORY_SIZE = 0x10000;
@@ -130,9 +131,8 @@ public:
     bool load_cartridge(Cartridge& cartridge);
     bool load_rom(const char* path); // For Testing Purposes
 
-
 private:
-    uint8_t memory[MEMORY_SIZE]{};
+    std::array<uint8_t, MEMORY_SIZE> memory{};
 };
 
 // TODO: Perform checks to prevent illegal read/writes to memory

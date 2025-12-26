@@ -82,7 +82,7 @@ public:
     void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int j);
     std::pair<uint8_t, uint8_t> fetch_tile_row(int bg_map_x, int bg_map_y);
 
-    uint32_t frame_buffer[GBResolution::DIMENSIONS]{};
+    std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{}; // TODO: Make this private
 private:
     Mmu& mmu;
 

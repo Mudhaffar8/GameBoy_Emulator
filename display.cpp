@@ -87,7 +87,7 @@ void Display::update_screen()
 
     SDL_LockTexture(texture, nullptr, (void**)(&pixels), &pitch);
 
-    std::copy(ppu.frame_buffer, ppu.frame_buffer + GBResolution::DIMENSIONS, pixels);
+    std::copy(ppu.frame_buffer.begin(), ppu.frame_buffer.end(), pixels);
 
     SDL_UnlockTexture(texture);
 

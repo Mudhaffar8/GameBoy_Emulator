@@ -14,9 +14,9 @@ Mmu::Mmu()
         0x00,0x0F,0x00,0x0F,0x00,0x0F,0x00,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F, // Other Checkered Pattern
     };
 
-    std::copy(tileset_tiles.begin(), tileset_tiles.end(), memory + TILE_DATA_ADDR0_START);
+    std::copy(tileset_tiles.begin(), tileset_tiles.end(), memory.begin() + TILE_DATA_ADDR0_START);
 
-    std::fill(memory + BG_TILE_MAP_START, memory + BG_TILE_MAP_END, 0x03);
+    std::fill(memory.begin() + BG_TILE_MAP_START, memory.begin() + BG_TILE_MAP_END, 0x03);
 
     memory[BG_TILE_MAP_START + 64] = 0x00; // Make tile Mario's face
     memory[BG_TILE_MAP_START + 8] = 0x02; // Make 8th tile checkered pattern
@@ -50,7 +50,7 @@ bool Mmu::load_rom(const char* path)
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(buffer.data()), file_size);
 
-    std::copy(buffer.begin(), buffer.end(), memory);
+    std::copy(buffer.begin(), buffer.end(), memory.begin());
 
     return true;
 }
