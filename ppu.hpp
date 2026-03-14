@@ -8,20 +8,20 @@
 
 namespace GBResolution
 {
-constexpr int WIDTH = 160;
-constexpr int WIDTH_WHOLE = 256;
-constexpr int HEIGHT = 144;
-constexpr int DIMENSIONS = WIDTH * HEIGHT;
-constexpr int NUM_OF_TILES = 20;
-constexpr int NUM_OF_TILES_WHOLE = 32;
+    constexpr int WIDTH = 160;
+    constexpr int WIDTH_WHOLE = 256;
+    constexpr int HEIGHT = 144;
+    constexpr int DIMENSIONS = WIDTH * HEIGHT;
+    constexpr int NUM_OF_TILES = 20;
+    constexpr int NUM_OF_TILES_WHOLE = 32;
 }
 
 namespace GBColours
 {
-static const uint32_t COLOUR00 = 0xFFFFFFFF;
-static const uint32_t COLOUR01 = 0X7F7F7FFF;
-static const uint32_t COLOUR10 = 0x3F3F3FFF;
-static const uint32_t COLOUR11 = 0x000000FF;
+    static const uint32_t COLOUR00 = 0xFFFFFFFF;
+    static const uint32_t COLOUR01 = 0X7F7F7FFF;
+    static const uint32_t COLOUR10 = 0x3F3F3FFF;
+    static const uint32_t COLOUR11 = 0x000000FF;
 }
 
 
@@ -38,32 +38,7 @@ const int TILE_DATA_LINE_LEN = 2;
 constexpr int NUM_OF_SCANLINES = 144;
 constexpr int NUM_OF_VISIBLE_SCANLINES = NUM_OF_SCANLINES - 10;
 
-
-// Order probably be wrong
-struct GBObject
-{
-    struct 
-    {
-        uint8_t cgb_flags : 4; // Unused for now
-        uint8_t pallet_number : 1;
-        uint8_t x_flip : 1;
-        uint8_t y_flip : 1;
-        uint8_t obj_to_bg_priority : 1;
-    };  
-
-    uint8_t tile_number;
-    uint8_t y_pos;
-    uint8_t x_pos;
-};
-
-struct GBPixelFIFO
-{
-    uint8_t color;
-    uint8_t pallete;
-    uint8_t priority;
-};
-
-
+/// @brief Emulates Game Boy PPU (Pixel Processing Unit).
 class Ppu
 {
 public:
@@ -71,18 +46,22 @@ public:
 
     void test();
 
+    /// @brief Advance PPU by a given number of cycles
+    /// @param cycles Number of CPU cycles to advance.
     void tick(uint32_t cycles);
 
-    uint32_t get_tile_colour(uint8_t bit2);
-
+    // Rendering Methods
     void render_scanline();
     void render_frame();
     void render_tile();
 
+    uint32_t get_tile_colour(uint8_t bit2);
     void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int j);
     std::pair<uint8_t, uint8_t> fetch_tile_row(int bg_map_x, int bg_map_y);
 
-    std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{}; // TODO: Make this private
+    /// @brief Frame buffer containing 32-bit RGBA pixel values.
+    /// @todo Make this private.
+    std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
 private:
     Mmu& mmu;
 
@@ -93,8 +72,6 @@ private:
         OamScan,
         Drawing
     };
-
-    std::queue<GBPixelFIFO> pixel_fifo;
 
     PpuModes ppu_mode = PpuModes::HBlank;
 

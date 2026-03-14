@@ -52,7 +52,7 @@ Display::~Display()
     SDL_Quit();
 }
 
-void Display::handle_input(bool* key_input)
+void Display::handle_input(std::array<bool, 16>& key_input)
 {
     while (SDL_PollEvent(&event))
     {

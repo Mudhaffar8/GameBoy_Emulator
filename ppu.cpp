@@ -83,7 +83,7 @@ void Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int y)
 
         // std::cout << ((GBResolution::WIDTH) * y + x + i) << " (";
 
-        frame_buffer[(GBResolution::WIDTH) * y + x + i] = get_tile_colour((msb << 1) | lsb);
+        frame_buffer.at((GBResolution::WIDTH * y) + x + i) = get_tile_colour((msb << 1) | lsb);
 
         // std::cout << "(" << get_tile_colour((msb << 1) | lsb) << ") (" << y << ", " << x + i << ")";
 
@@ -91,9 +91,6 @@ void Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int y)
     }
 }
 
-/**
- * @returns the first and second byte of a tile representing one tile row
- */
 std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int bg_map_x, int bg_map_y)
 { 
     // Assume Tile addressing mode one for now

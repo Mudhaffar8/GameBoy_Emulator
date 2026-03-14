@@ -1,6 +1,6 @@
 #include "interrupts.hpp"
 
-void GBInterrupts::request_interrupt(Mmu& mem, Interrupts interrupt)
+inline void GBInterrupts::request_interrupt(Mmu& mem, Interrupts interrupt)
 {
     uint8_t& interrupt_flag = mem.read_byte_ref(INTERRUPT_FLAG);
     interrupt_flag |= static_cast<uint8_t>(interrupt);

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <array>
 
-// TODO: Add namespaces
+/// @todo Add namespaces
 constexpr size_t MEMORY_SIZE = 0x10000;
 
 constexpr uint16_t BOOT_ROM_START = 0x0000;
@@ -118,25 +118,26 @@ constexpr uint16_t INTERRUPT_ENABLE = 0xFFFF;
 constexpr uint16_t HIGH_RAM_START = 0xFF80;
 constexpr uint16_t HIGH_RAM_END = 0xFFFE;
 
+/// @brief Handles reads and writes to the Game Boy's addressable memory.
+/// Provides functions for accessing memory and loading cartridge/ROM data into memory.
 class Mmu
 {
 public:
     Mmu();
 
-    inline uint8_t read_byte(uint16_t address) const;
-    inline uint8_t& read_byte_ref(uint16_t address);
+    /* Writing to memory */
+    /// @todo Perform checks to prevent illegal writes to memory
+    inline void write_byte(uint8_t byte, int address) { memory.at(address) = byte; }
 
-    inline void write_byte(uint8_t byte, uint16_t address);
+    /* Reading from memory */
+    /// @todo Perform checks to prevent illegal reads to memory
+    inline uint8_t read_byte(int address) const { return memory.at(address); }
+    inline uint8_t& read_byte_ref(int address) { return memory.at(address); }
 
+    /* Loading programs into memory */
     bool load_cartridge(Cartridge& cartridge);
-    bool load_rom(const char* path); // For Testing Purposes
+    bool load_rom(const char* path); /// @note For Testing Purposes
 
 private:
     std::array<uint8_t, MEMORY_SIZE> memory{};
 };
-
-// TODO: Perform checks to prevent illegal read/writes to memory
-inline void Mmu::write_byte(uint8_t byte, uint16_t address) { memory[address] = byte; }
-
-inline uint8_t Mmu::read_byte(uint16_t address) const { return memory[address]; }
-inline uint8_t& Mmu::read_byte_ref(uint16_t address) { return memory[address]; }

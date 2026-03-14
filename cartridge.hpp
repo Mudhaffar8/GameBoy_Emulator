@@ -42,8 +42,8 @@ const uint16_t GLOBAL_CHECKSUM_LOW = 0x014F;
 
 const uint16_t HEADER_SIZE = 0x0150;
 
-// We're going to need classes for different mappers
-// Make this Interface?
+/// @note Might need classes for different mappers.
+/// @brief Represents Game Boy cartridge with ROM data and optional RAM.
 class Cartridge
 {
 public:
@@ -74,10 +74,13 @@ public:
     };
     
 private:
-    std::vector<uint8_t> rom;
-    std::vector<uint8_t> ram;
+    std::vector<uint8_t> rom, ram;
 
     int curr_rom_bank{}, curr_ram_bank{};
 };
 
+
+/// @brief Reads and validates the header of a Game Boy ROM file.
+/// @param path Path to the ROM file.
+/// @returns false if the file is not found or the format is invalid.
 bool read_header(const char* path);
