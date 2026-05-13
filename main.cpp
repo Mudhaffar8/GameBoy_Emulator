@@ -1,25 +1,45 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_keyboard.h>
 
-#include <iostream>
+#include <assert.h>
 #include <chrono>
 #include <cstdint>
+#include <iostream>
 #include <numeric>
 
 #include "cpu.hpp"
-#include "ppu.hpp"
-#include "memory.hpp"
 #include "display.hpp"
-#include "cpu.hpp"
+#include "memory.hpp"
+#include "ppu.hpp"
 
 double speed_test();
 void ppu_test();
+void ppu_tile_test(int tile_x, int tile_y);
 void avg_speed_test();
+
 
 int main(int argc, char** argv)
 {
-    ppu_test();
+    assert(argc > 2);
+
+    ppu_tile_test(
+        std::atoi(argv[1]),
+        std::atoi(argv[2])
+    );
+
     return 0;
+}
+
+void ppu_tile_test(int tile_x, int tile_y)
+{
+    Mmu mmu;
+    Ppu ppu(mmu);
+    Display display(ppu);
+
+    ppu.render_tile(tile_x, tile_y);
+    display.update_screen();
+
+    SDL_Delay(3000);
 }
 
 void ppu_test()
@@ -37,7 +57,7 @@ void ppu_test()
     double diff = std::chrono::duration<double, std::milli>(end - start).count();
 
     std::cout << diff;
-
+    
     SDL_Delay(3000);
 }
 
@@ -47,7 +67,9 @@ void avg_speed_test()
 
     std::vector<double> times;
     times.reserve(NUM_OF_TESTS);
-    for (int i = 0; i < NUM_OF_TESTS; ++i) times.push_back(speed_test());   
+    
+    for (int i = 0; i < NUM_OF_TESTS; ++i) 
+        times.push_back(speed_test());   
 
     double avg = std::accumulate(times.begin(), times.end(), 0.0);
     avg = avg / static_cast<double>(NUM_OF_TESTS);
@@ -61,7 +83,7 @@ double speed_test()
     Ppu ppu(mmu);
 
     uint32_t buffer[GBResolution::HEIGHT * GBResolution::WIDTH]{};
-    std::fill(buffer, buffer + sizeof(buffer) / sizeof(buffer[0]), GBColours::COLOUR10);
+    std::fill(buffer, buffer + sizeof(buffer) / sizeof(buffer[0]), GBColours::COLOUR_10);
 
     Display display(ppu);
 
@@ -73,7 +95,7 @@ double speed_test()
     Cpu cpu(mmu);
 
     auto start = std::chrono::steady_clock::now();
-    for (uint32_t i = 0; i < CYCLES_PER_FRAME;)
+    for (uint32_t i = 0; i < GBTiming::CYCLES_PER_FRAME;)
     {
         i += cpu.execute_instruction();
     }

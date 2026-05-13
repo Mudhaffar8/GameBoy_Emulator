@@ -27,7 +27,7 @@ struct RegPair
 class Cpu
 {
 public:
-    Cpu(Mmu& mem);
+    explicit Cpu(Mmu& mem);
     
     /// @brief Fetches, decodes and executes one CPU instruction at program counter.
     /// @returns Number of T-cycles taken by the executed instruction.

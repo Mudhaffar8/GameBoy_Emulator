@@ -9,14 +9,14 @@
 class Timer
 {
 public:
-    Timer(Mmu& memory);
+    explicit Timer(Mmu& memory);
     
     /// @brief Advances timer by given number of cycles
     /// @param cycles number of cycles to advance.
     void tick(uint32_t cycles);
 
 private:
-    const int clock_select_freq[4] = { 1024, 16, 64, 256 };
+    static constexpr std::array<int, 4> clock_select_freq { 1024, 16, 64, 256 };
 
     Mmu& mem;
 

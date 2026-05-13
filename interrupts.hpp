@@ -18,6 +18,7 @@ namespace GBInterrupts
 
     inline void request_interrupt(Mmu& mem, Interrupts interrupt);
 
+    /* Requesting Interrupts */
     inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt); // Checks if an interrupt is both requested and enabled.
     inline bool is_interrupt_requested(Mmu& mem, Interrupts interrupt);
     inline bool is_interrupt_enabled(Mmu& mem, Interrupts interrupt);
