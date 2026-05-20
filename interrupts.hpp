@@ -4,18 +4,18 @@
 
 #include "memory.hpp"
 
+/// @brief Interrupt source bitmasks for IF and IE registers.
+enum class Interrupts : uint8_t 
+{
+    VBlank = 0x01,
+    LCD = 0x02,
+    Timer = 0x04,
+    Serial = 0x08,
+    JoyPad = 0x10
+};
+
 namespace GBInterrupts
 {
-    /// @brief Interrupt source bitmasks for IF and IE registers.
-    enum class Interrupts : uint8_t 
-    {
-        VBlank = 0x01,
-        LCD = 0x02,
-        Timer = 0x04,
-        Serial = 0x08,
-        JoyPad = 0x10
-    };
-
     inline void request_interrupt(Mmu& mem, Interrupts interrupt);
 
     /* Requesting Interrupts */

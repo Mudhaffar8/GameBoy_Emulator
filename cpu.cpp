@@ -1975,8 +1975,6 @@ void Cpu::check_interrupts()
 // 4 T-cycles = set PC to Interrupt Address
 void Cpu::handle_interrupt()
 {
-    using Interrupts = GBInterrupts::Interrupts;
-
     std::cout << "Handler" << std::endl;
     IME = false;
 
@@ -1993,19 +1991,16 @@ void Cpu::handle_interrupt()
         mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::LCD), INTERRUPT_FLAG);
         call_n16(SERIAL_INTERRUPT_START);
     }
-
     else if ((interrupt & static_cast<uint8_t>(Interrupts::Timer)) != 0)
     {
         mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Timer), INTERRUPT_FLAG);
         call_n16(TIMER_INTERRUPT_STARRT);
     }
-
     else if ((interrupt & static_cast<uint8_t>(Interrupts::Serial)) != 0)
     {
         mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Serial), INTERRUPT_FLAG);
         call_n16(SERIAL_INTERRUPT_START);
     }
-
     else if ((interrupt & static_cast<uint8_t>(Interrupts::JoyPad)) != 0)
     {
         mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);

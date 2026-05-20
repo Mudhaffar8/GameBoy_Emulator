@@ -15,7 +15,7 @@ Display::Display(Ppu& _ppu) :
     }
 
     if (!SDL_CreateWindowAndRenderer(
-        "CHIP-8 Emulator", 
+        "Game Boy Emulator", 
         GBResolution::WIDTH, 
         GBResolution::HEIGHT, 
         SDL_WINDOW_RESIZABLE, 

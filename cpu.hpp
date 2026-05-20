@@ -104,7 +104,7 @@ private:
     uint16_t& get_reg16_ref(int index);
 
     /// @brief Advances PC by 2 and retrieves next 2 bytes in memory.
-    /// @return 16-bit value in little-endian.
+    /// @returns 16-bit value in little-endian.
     inline uint16_t read_next16();
 
     /* CPU Instructions */
