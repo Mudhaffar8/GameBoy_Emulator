@@ -81,6 +81,12 @@ public:
         Drawing
     };
 
+    enum class Layers 
+    {
+        Background,
+        Window
+    };
+
     void test();
 
     /// @brief Advance PPU by a given number of cycles
@@ -88,26 +94,36 @@ public:
     void tick(uint32_t cycles);
 
     // Rendering Methods
-    void render_bg_scanline(int y);
+    void render_bg_scanline(int screen_y);
+    void render_window_scanline(int screen_y);
     void render_tile(int tile_x, int tile_y);
+
+    void render_bg_frame();
+    void render_window_frame();
     void render_frame();
 
     void reset_screen();
 
     // Tile Methods
-    void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int x, int j);
+    void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int tile_screen_x, int screen_y);
     uint32_t get_tile_colour(uint8_t bit2) const;
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int bg_map_x, int bg_map_y) const;
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, Layers layer) const;
 
     /// @brief Frame buffer containing 32-bit RGBA pixel values.
     /// @todo Make this private.
     std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
 
     // @brief Temporary setters for scroll values
-    void set_scroll_values(uint8_t scx, uint8_t scy)
+    void set_bg_scroll_values(uint8_t scx, uint8_t scy)
     {
-        this->scroll_x = scx;
-        this->scroll_y = scy;
+        this->bg_scroll_x = scx;
+        this->bg_scroll_y = scy;
+    }
+
+    void set_window_scroll_values(uint8_t scx, uint8_t scy)
+    {
+        this->window_scroll_x = scx;
+        this->window_scroll_y = scy;
     }
 
     bool debug_mode = false;
@@ -116,8 +132,11 @@ private:
 
     Mode ppu_mode = Mode::OamScan;
 
-    uint8_t scroll_x = 0;
-    uint8_t scroll_y = 0;
+    uint8_t bg_scroll_x = 0;
+    uint8_t bg_scroll_y = 0;
+
+    uint8_t window_scroll_x = 7;
+    uint8_t window_scroll_y = 0;
 
     int scanline_x = 0;
     int scanline_y = 0;

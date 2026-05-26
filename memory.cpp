@@ -18,6 +18,10 @@ Mmu::Mmu()
     std::copy(tileset_tiles.begin(), tileset_tiles.end(), memory.begin() + TILE_DATA_ADDR0_START);
 
     std::fill(memory.begin() + BG_TILE_MAP_START, memory.begin() + BG_TILE_MAP_END + 1, 0x03);
+    std::fill(memory.begin() + WINDOW_TILE_MAP_START, memory.begin() + WINDOW_TILE_MAP_END + 1, 0x01);
+
+    memory[WINDOW_TILE_MAP_START + 8] = 0x04;
+    memory[WINDOW_TILE_MAP_START + 64] = 0x00; // Make tile Mario's face
 
     memory[BG_TILE_MAP_START + 64] = 0x00; // Make tile Mario's face
     memory[BG_TILE_MAP_START + 8] = 0x02; // Make 8th tile checkered pattern

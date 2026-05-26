@@ -12,12 +12,21 @@
 #include "memory.hpp"
 #include "ppu.hpp"
 
-double speed_test();
-void ppu_scroll_test2();
-void ppu_scroll_test(int scx, int scy);
-void ppu_scanline_test(int scx);
-void ppu_tile_test();
-void avg_speed_test();
+/* CPU Speed Tests */
+double cpu_speed_test();
+void cpu_avg_speed_test();
+
+/* Full Frame Tests */
+void ppu_window_frame_test(int scx, int scy);
+
+/* Scrolling tests w/ Window & BG */
+void ppu_scroll_test(int scx, int scy); // Renders one frame with scrolling applied
+void ppu_scroll_test2(); 
+
+/* Scanline Tests */
+void ppu_window_scanline_test(int scx, int scy);
+void ppu_bg_scanline_test(int scx, int scy);
+void ppu_scanline_test(int y);
 
 static Mmu mmu;
 static Cpu cpu(mmu);
@@ -37,14 +46,51 @@ int main(int argc, char** argv)
     else if (argv[1] == std::string("scroll_test2"))
         ppu_scroll_test2();
     else if (argv[1] == std::string("scanline_test"))
-        ppu_scanline_test(scx);
+        ppu_scanline_test(scy);
+    else if (argv[1] == std::string("bg_scanline_test"))
+        ppu_scanline_test(scy);
+    else if (argv[1] == std::string("window_scanline_test"))
+        ppu_window_scanline_test(scx, scy);
+    else if (argv[1] == std::string("window_test"))
+        ppu_window_frame_test(scx, scy);
 
     return 0;
 }
 
-void ppu_scanline_test(int scx)
+void ppu_scanline_test(int y)
+{    
+    ppu.render_bg_scanline(y);
+    ppu.render_window_scanline(y);
+
+    display.update_screen();
+
+    SDL_Delay(3000);
+}
+
+void ppu_window_scanline_test(int scx, int scy)
 {
-    ppu.set_scroll_values(scx, 0);
+    ppu.set_window_scroll_values(scx, scy);
+
+    ppu.render_window_scanline(0);
+    display.update_screen();
+
+    SDL_Delay(3000);
+}
+
+
+void ppu_window_frame_test(int scx, int scy)
+{
+    ppu.set_window_scroll_values(scx, scy);
+
+    ppu.render_frame();
+    display.update_screen();
+
+    SDL_Delay(3000);
+}
+
+void ppu_bg_scanline_test(int scx, int scy)
+{
+    ppu.set_bg_scroll_values(scx, scy);
 
     ppu.render_bg_scanline(0);
     display.update_screen();
@@ -52,9 +98,9 @@ void ppu_scanline_test(int scx)
     SDL_Delay(3000);
 }
 
-void ppu_scroll_test(int scx, int scy)
+void ppu_bg_scroll_test(int scx, int scy)
 {
-    ppu.set_scroll_values(scx, scy);
+    ppu.set_bg_scroll_values(scx, scy);
 
     ppu.render_frame();
     display.update_screen();
@@ -62,30 +108,34 @@ void ppu_scroll_test(int scx, int scy)
     SDL_Delay(3000);
 }
 
-void ppu_tile_test()
+void ppu_scroll_test(int scx, int scy)
 {
-    ppu.render_tile(0, 0);
-    ppu.render_tile(19, 0);
+    ppu.set_bg_scroll_values(scx, scy);
+    ppu.set_window_scroll_values(scx, scy);
+
+    ppu.render_frame();
     display.update_screen();
 
     SDL_Delay(3000);
 }
 
 void ppu_scroll_test2()
-{
-    auto start = std::chrono::steady_clock::now();
-    
+{    
     ppu.render_frame();
     display.update_screen();
 
     SDL_Delay(1000);
+
+    auto start = std::chrono::steady_clock::now();
     
     for (uint32_t i = 0; i < (GBResolution::TILE_MAP_SIZE_PIXELS * 2); ++i)
     {
-        ppu.set_scroll_values(i, i);
+        ppu.set_window_scroll_values(i, i);
 
         ppu.render_frame();
         display.update_screen();
+
+        // ppu.reset_screen();
 
         // std::cout << "Scroll = (X: " << i << ", Y: " << i << ")\n";
 
@@ -100,7 +150,7 @@ void ppu_scroll_test2()
     SDL_Delay(3000);
 }
 
-void avg_speed_test()
+void cpu_avg_speed_test()
 {
     constexpr int NUM_OF_TESTS = 1000;
 
@@ -108,7 +158,7 @@ void avg_speed_test()
     times.reserve(NUM_OF_TESTS);
     
     for (int i = 0; i < NUM_OF_TESTS; ++i) 
-        times.push_back(speed_test());   
+        times.push_back(cpu_speed_test());   
 
     double avg = std::accumulate(times.begin(), times.end(), 0.0);
     avg /= static_cast<double>(NUM_OF_TESTS);
@@ -116,7 +166,7 @@ void avg_speed_test()
     std::cout << avg;
 }
 
-double speed_test()
+double cpu_speed_test()
 {
     uint32_t buffer[GBResolution::HEIGHT * GBResolution::WIDTH]{};
     std::fill(buffer, buffer + sizeof(buffer) / sizeof(buffer[0]), GBColours::COLOUR_10);
@@ -129,7 +179,7 @@ double speed_test()
     mmu.write_byte(0xC7, 5); // RST 0x00
 
     auto start = std::chrono::steady_clock::now();
-    for (uint32_t i = 0; i < GBTiming::CYCLES_PER_FRAME; i += cpu.execute_instruction());
+    for (uint32_t i = 0;  i < GBTiming::CYCLES_PER_FRAME; i += cpu.execute_instruction());
 
     display.update_screen(buffer); 
 
