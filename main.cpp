@@ -26,7 +26,7 @@ void ppu_scroll_test2();
 /* Scanline Tests */
 void ppu_window_scanline_test(int scx, int scy);
 void ppu_bg_scanline_test(int scx, int scy);
-void ppu_scanline_test(int y);
+void ppu_scanline_test(int scx, int scy);
 
 static Mmu mmu;
 static Cpu cpu(mmu);
@@ -45,26 +45,36 @@ int main(int argc, char** argv)
         ppu_scroll_test(scx, scy);
     else if (argv[1] == std::string("scroll_test2"))
         ppu_scroll_test2();
-    else if (argv[1] == std::string("scanline_test"))
-        ppu_scanline_test(scy);
-    else if (argv[1] == std::string("bg_scanline_test"))
-        ppu_scanline_test(scy);
     else if (argv[1] == std::string("window_scanline_test"))
         ppu_window_scanline_test(scx, scy);
+    else if (argv[1] == std::string("scanline_test"))
+        ppu_scanline_test(scx, scy);
     else if (argv[1] == std::string("window_test"))
         ppu_window_frame_test(scx, scy);
 
     return 0;
 }
 
-void ppu_scanline_test(int y)
-{    
-    ppu.render_bg_scanline(y);
-    ppu.render_window_scanline(y);
+void ppu_scanline_test(int scx, int scy)
+{
+    ppu.set_window_scroll_values(scx, scy);
 
-    display.update_screen();
+    for (int i = 0; i < GBResolution::HEIGHT; ++i)
+    {
+        std::cout << "Rendered BG Scanline #" << i;
+        ppu.render_bg_scanline(i);
+        SDL_Delay(500);
 
-    SDL_Delay(3000);
+        display.update_screen();
+
+        std::cout << "Rendered Window Scanline #" << i;
+        ppu.render_window_scanline(i);
+        SDL_Delay(500);
+
+        display.update_screen();
+    }
+
+    SDL_Delay(2000);
 }
 
 void ppu_window_scanline_test(int scx, int scy)
@@ -130,7 +140,7 @@ void ppu_scroll_test2()
     
     for (uint32_t i = 0; i < (GBResolution::TILE_MAP_SIZE_PIXELS * 2); ++i)
     {
-        ppu.set_window_scroll_values(i, i);
+        ppu.set_window_scroll_values(7 + i, i);
 
         ppu.render_frame();
         display.update_screen();

@@ -69,9 +69,10 @@ void Ppu::render_bg_scanline(int screen_y)
 
 void Ppu::render_window_scanline(int screen_y)
 {
+    if (screen_y < window_scroll_y || screen_y >= GBResolution::HEIGHT) return;
+
     // Key Difference: Window Layer does not loop
-    int tile_map_y = screen_y + window_scroll_y;
-    if (tile_map_y >= GBResolution::HEIGHT) return; 
+    int tile_map_y = screen_y - window_scroll_y;
 
     int total_scroll_x = window_scroll_x - 7;
     int visible_tiles = (GBResolution::WIDTH - total_scroll_x) / GBTile::SIZE_PIXELS + 1; 
@@ -87,9 +88,9 @@ void Ppu::render_window_scanline(int screen_y)
     {
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = screen_x + total_scroll_x; // Window Layer does not loop
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(screen_x, screen_y, Layers::Window);
+        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(screen_x, tile_map_y, Layers::Window);
 
-        decode_tile_row(tile_row.first, tile_row.second, tile_map_x, tile_map_y); 
+        decode_tile_row(tile_row.first, tile_row.second, tile_map_x, screen_y); 
     }
 
     //std::cout << '\n';
