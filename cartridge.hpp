@@ -40,7 +40,7 @@ const uint16_t HEADER_CHECKSUM = 0x014D;
 const uint16_t GLOBAL_CHECKSUM_HIGH = 0x014E;
 const uint16_t GLOBAL_CHECKSUM_LOW = 0x014F;
 
-const uint16_t HEADER_SIZE = 0x0150;
+constexpr uint16_t HEADER_SIZE = 0x0150;
 
 /// @note Might need classes for different mappers.
 /// @brief Represents Game Boy cartridge with ROM data and optional RAM.
@@ -74,7 +74,8 @@ public:
     };
     
 private:
-    std::vector<uint8_t> rom, ram;
+    std::vector<uint8_t> rom;
+    std::vector<uint8_t> ram;
 
     int curr_rom_bank{}, curr_ram_bank{};
 };

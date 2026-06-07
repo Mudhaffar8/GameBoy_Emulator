@@ -4,15 +4,16 @@
 #include <filesystem>
 #include <iostream>
 #include <exception>
+#include <array>
 
 Cartridge::Cartridge(size_t rom_size, size_t ram_size) : 
     rom(rom_size), 
     ram(ram_size)
 {}
 
-bool nintendo_logo_check(uint8_t header[HEADER_SIZE])
+bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
 {
-    const uint8_t nintendo_logo[NINTENDO_LOGO_LEN] = {
+    constexpr static std::array<uint8_t, NINTENDO_LOGO_LEN> nintendo_logo = {
         0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 
         0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,  
         0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 
@@ -23,22 +24,22 @@ bool nintendo_logo_check(uint8_t header[HEADER_SIZE])
 
     for (int i = 0; i < NINTENDO_LOGO_LEN; ++i)
     {
-        if (nintendo_logo[i] != header[NINTENDO_LOGO_START + i])
+        if (nintendo_logo[i] != header.at(NINTENDO_LOGO_START + i))
             return false;
     }
 
     return true;
 }
 
-bool perform_checksum(uint8_t header[HEADER_SIZE])
+bool perform_checksum(std::array<uint8_t, HEADER_SIZE>& header)
 {
     uint8_t checksum = 0;
     for (uint16_t i = TITLE_START; i <= ROM_VERSION; ++i) 
     {
-        checksum -= header[i] - 1;
+        checksum -= header.at(i) - 1;
     }
 
-    return checksum == header[HEADER_CHECKSUM];
+    return checksum == header.at(HEADER_CHECKSUM);
 }
 
 // Cartridge get_cartridge(int cartridge_type, size_t rom_size, size_t ram_size)
@@ -73,23 +74,24 @@ bool read_header(const char* path)
         return false;
     }
 
-    uint8_t header[HEADER_SIZE]{ 0 };
+    std::array<uint8_t, HEADER_SIZE> header{};
 
-    file.read(reinterpret_cast<char*>(header), sizeof(header) / sizeof(uint8_t));
+    file.read(reinterpret_cast<char*>(header.data()), header.size());
 
 	file.close();
 
-    // if (!nintendo_logo_check(buffer))
+    // if (!nintendo_logo_check(header))
     // {
     //     std::cerr << "Failed Nintendo Logo Check" << std::endl;
-    //     return nullptr;
+    //     return false;
     // }
 
-    // if (!perform_checksum(buffer))
+    // if (!perform_checksum(header))
     // {
-    //     return nullptr;
+    //     std::cerr << "Failed Check Sum" << std::endl;
+    //     return false;
     // }
-    // size_t rom_size = 32 * (1 << header[ROM_SIZE]);
+    // size_t rom_size = 32 * (1 << header.at(ROM_SIZE));
     
     return true;
 }
