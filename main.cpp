@@ -43,6 +43,8 @@ int main(int argc, char** argv)
 
     ppu.debug_mode = debug_mode_enabled;
 
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap);
+
     if (argv[1] == std::string("scroll_test"))
         ppu_scroll_test(scx, scy);
     else if (argv[1] == std::string("scroll_test2"))
@@ -55,6 +57,8 @@ int main(int argc, char** argv)
         ppu_window_frame_test(scx, scy);
     else if (argv[1] == std::string("sprite_test"))
         ppu_sprite_frame_test(scx, scy);
+    else if (argv[1] == std::string("sprite_scroll"))
+        ppu_sprite_scroll_test();
     else if (argv[1] == std::string("sprite_scroll"))
         ppu_sprite_scroll_test();
     return 0;

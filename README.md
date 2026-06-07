@@ -10,14 +10,14 @@ This is a work-in-progress GameBoy emulator written in C++. The primary goal of 
 - Basic implementation of the Timer (still needs to be tested).
 - Some PPU features supported:
   - Per-scanline rendering
-  - Full-frame rendering (Rendering multiple scanlines in succession)
-  - Display can be outputted through SDL3
+  - Background, window, and sprite layers
+  - X and Y scrolling behaviors for all 3
  
 ## Planned Updates
 - Add more PPU features:
-  - X and Y scrolling behaviours
-  - Implement all the above PPU features for the Window layer
-  - Sprite Rendering
-
+  - Sprite attributes
+    - X and Y flipping
+    - Sprite vs. BG priority
+  - PPU Mode switching (OAM Scan, HBlank, VBlank, Drawing)
 
 This project is in active development, so stay tuned for updates.

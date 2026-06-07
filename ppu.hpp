@@ -75,11 +75,6 @@ struct GBSprite
         attributes(attrib) 
     {}
 
-    bool operator<(const GBSprite& rhs) const
-    {
-        return x_pos < rhs.x_pos;
-    }
-
     friend std::ostream& operator<<(std::ostream& os, const GBSprite& sprite) 
     {
         os << "Sprite: (X: " << +sprite.x_pos << " Y: " << +sprite.y_pos
@@ -88,7 +83,7 @@ struct GBSprite
         return os; 
     }
 };
-static_assert(sizeof(GBSprite) == 4);
+static_assert(sizeof(GBSprite) == sizeof(uint32_t));
 
 /// @brief Emulates Game Boy PPU (Pixel Processing Unit.)
 class Ppu
@@ -104,19 +99,13 @@ public:
         Drawing
     };
 
-    enum class TileMaps 
-    {
-        Background,
-        Window
-    };
-
     enum class LCDC
     {
         BgWindowEnable = 0x01, // Enables/Disables BG & Window; both become blank (white)
         ObjEnable = 0x02, // Enables objects (0 = Off; 1 = On)
         ObjSize =  0x04, // 0 = 8x8, 1 = 8x16
         BgTileMapArea = 0x08, // 0 - 9800-9BFF; 1 = 9C00-9FFF
-        BgWindowTileDataArea = 0x10, // 0 = 8800-97FF; 1 = 8000-8FFF
+        BgWindowTileDataArea = 0x10, // 0 = 8800-97FF (8800 method); 1 = 8000-8FFF (8000 method)
         WindowEnable = 0x20,
         WindowTileMap = 0x40, // 0 = 9800-9BFF; 1 = 9C00-9FFF
         LCDPpuEnable = 0x80 // 0 = Off; 1 - On
@@ -163,9 +152,9 @@ public:
 
     /* Tile Methods */
     void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int tile_screen_x, int screen_y);
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const; // For Window & Background Layers
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_id, int tile_map_y) const; // For Sprites Only
     uint32_t get_tile_colour(uint8_t bit2) const;
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, TileMaps layer) const;
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_id, int tile_map_y) const; // For Sprites
 
     /// @brief Frame buffer containing 32-bit RGBA pixel values.
     /// @todo Make this private.
