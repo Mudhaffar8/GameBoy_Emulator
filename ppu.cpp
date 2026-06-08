@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include <iostream>
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 
 #include "ppu.hpp"
@@ -8,7 +8,11 @@
 Ppu::Ppu(Mmu& _mmu) :
     mmu(_mmu),
     lcdc(mmu.read_byte_ref(LCD_CONTROL)),
-    lcd_status(mmu.read_byte_ref(LCD_STATUS))
+    lcd_status(mmu.read_byte_ref(LCD_STATUS)),
+    bg_palette(mmu.read_byte_ref(BG_PALETTE)),
+    obj0_palette(mmu.read_byte_ref(OBJ_PALETTE_0)),
+    obj1_palette(mmu.read_byte_ref(OBJ_PALETTE_1))
+
 {
     oam_buffer.reserve(10);
 }
@@ -66,19 +70,20 @@ void Ppu::render_bg_scanline(int screen_y)
     //std::cout << "BG Scanline #" << screen_y << '\n';
 
     bool use_bg_tile_map = check_lcdc(LCDC::BgTileMapArea);
+
     // 21 unique tiles will need to be rendered at most
     for (int tile_x = 0; tile_x < GBResolution::TILES_PER_ROW_VISIBLE_MAX; ++tile_x)
     {
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = (screen_x + bg_scroll_x) & 0xFF;
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_bg_tile_map);
+        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_bg_tile_map);
 
         // Get x-value of leftmost pixel on the tile in SCREEN coordinates
         int last_tile_screen_x = screen_x - tile_offset_x;
-        decode_tile_row(tile_row.first, tile_row.second, last_tile_screen_x, screen_y); 
-    }
+        auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
 
-    //std::cout << '\n';
+        write_pixels(tile_pixels, last_tile_screen_x, screen_y);
+    }
 }
 
 void Ppu::render_window_scanline(int screen_y)
@@ -104,33 +109,33 @@ void Ppu::render_window_scanline(int screen_y)
     {
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = screen_x + total_scroll_x; // Window Layer does not loop
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(screen_x, tile_map_y, use_bg_tile_map);
-
-        decode_tile_row(tile_row.first, tile_row.second, tile_map_x, screen_y); 
+        
+        auto tile_row = fetch_tile_row(screen_x, tile_map_y, use_bg_tile_map);
+        auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
+        write_pixels(tile_pixels, tile_map_x, screen_y);
     }
-
-    //std::cout << '\n';
 }
 
 void Ppu::render_sprites_scanline(int screen_y)
 {
+    int max_obj_height_idx = check_lcdc(LCDC::ObjSize) ? 15 : 7;
+
     for (const GBSprite& sprite : oam_buffer)
     {
+        // Convert sprite position to screen coordinates
         int obj_screen_y = static_cast<int>(sprite.y_pos) - 16;
         int obj_screen_x = static_cast<int>(sprite.x_pos) - 8;
 
-        int tile_row_y = screen_y - obj_screen_y; 
+        int tile_row_y = (sprite.flip_y) ? 
+            max_obj_height_idx - (screen_y - obj_screen_y) : 
+            screen_y - obj_screen_y; 
 
-        std::cout << "Tile Row Y: " << tile_row_y << '\n';
+        if (debug_mode) 
+            std::cout << "Tile Row Y: " << tile_row_y << '\n';
 
-        auto sprite_tile_row = fetch_tile_row(sprite.tile_number, tile_row_y);
-
-        decode_tile_row(
-            sprite_tile_row.first, 
-            sprite_tile_row.second,
-            obj_screen_x, 
-            screen_y
-        );
+        auto tile_row = fetch_sprite_tile_row(sprite.tile_number, tile_row_y);
+        auto tile_pixels = decode_sprite_tile_row(tile_row.first, tile_row.second, sprite.dmg_pallete_number);
+        write_sprite_pixels(tile_pixels, obj_screen_x, screen_y, sprite.flip_x, sprite.bg_priority);
     }
 }
 
@@ -144,9 +149,7 @@ void Ppu::oam_scan(int screen_y)
     
     oam_buffer.clear();
 
-    uint8_t obj_height = check_lcdc(LCDC::ObjSize) ?  
-        GBTile::HEIGHT_SPRITE_PIXELS : 
-        GBTile::SIZE_PIXELS;
+    uint8_t obj_height = check_lcdc(LCDC::ObjSize) ? 16 : 8;
 
     for (int i = 0; i < TOTAL_OAM_ENTRIES; ++i)
     {
@@ -168,51 +171,23 @@ void Ppu::oam_scan(int screen_y)
         oam_buffer.emplace_back(y_pos, x_pos, tile_num, attrib); 
     }
 
-    std::stable_sort(oam_buffer.begin(), oam_buffer.end(), [](const GBSprite& s1, const GBSprite& s2)
+    std::stable_sort(oam_buffer.begin(), oam_buffer.end(), 
+    [](const GBSprite& s1, const GBSprite& s2)
     {
         return s1.x_pos > s2.x_pos;
     });
 
     if (!oam_buffer.empty()) 
     {
-        std::cout << "# objs @ " << screen_y << ", OAM Size: " << oam_buffer.size() << std::endl;
-        
-        for (const GBSprite& sprite : oam_buffer)
-            std::cout << sprite << ", " << '\n';
+        if (debug_mode)
+        {
+            std::cout << "# objs @ " << screen_y << ", OAM Size: " << oam_buffer.size() << std::endl;
+            
+            for (const GBSprite& sprite : oam_buffer)
+                std::cout << sprite << ", " << '\n';
+        }
     }
 }
-
-/// @brief 
-/// @param hi_byte 
-/// @param lo_byte 
-/// @param screen_x the x-position of the leftmost pixel on the tile in SCREEN coordinates 
-/// @param screen_y the y-position of the leftmost pixel on the tile in SCREEN coordinates 
-void Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int screen_x, int screen_y)
-{
-    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) 
-    { std::cout << "Screen out of range: " << screen_y << std::endl; return; }
-
-    // Starts from right pixel to left
-    for (int i = 7; i >= 0; --i)
-    {
-        int pixel_screen_x = screen_x + i;
-        
-        if (pixel_screen_x >= GBResolution::WIDTH) continue;
-        else if (pixel_screen_x < 0) break;
-
-        std::cout << "Printing Pixel @ x: " << pixel_screen_x << " y: " << screen_y << " colour: ";
-
-        uint8_t msb = (lo_byte >> i) & 0x01;
-        uint8_t lsb = (hi_byte >> i) & 0x01;
-        uint8_t colour_id = (msb << 1) | lsb;
-
-        std::cout << +colour_id << '\n';
-
-        int index = (GBResolution::WIDTH * screen_y) + pixel_screen_x;
-        frame_buffer.at(index) = get_tile_colour(colour_id);
-    }
-}
-
 
 std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const
 { 
@@ -238,14 +213,11 @@ std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, 
 }
 
 /// @note Used specifically for sprites
-std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_id, int tile_map_y) const 
-{
-    tile_id &= 0x1F;
-    tile_map_y &= 0x1F;
-    
+std::pair<uint8_t, uint8_t> Ppu::fetch_sprite_tile_row(int tile_id, int tile_map_y) const 
+{    
     uint16_t row_address = TILE_DATA_ADDR0_START // Sprites always use 8000 method
         + (tile_id * GBTile::BYTES_PER_TILE) // Points to first row of tile
-        + ((tile_map_y % GBTile::SIZE_PIXELS) * GBTile::BYTES_PER_ROW); // Points to right tile row
+        + (tile_map_y * GBTile::BYTES_PER_ROW); // Points to right tile row
 
     // Get first two bytes of tile data to obtain one tile row
     uint8_t tile_row_first_byte = mmu.read_byte(row_address);
@@ -254,7 +226,96 @@ std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_id, int tile_map_y) con
     return std::make_pair(tile_row_first_byte, tile_row_second_byte);
 }
 
+std::array<uint8_t, 8> Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte)
+{
+    std::array<uint8_t, 8> pixels{};
 
+    // Starts from right pixel to left
+    for (int i = 7; i >= 0; --i)
+    {
+        uint8_t msb = (lo_byte >> i) & 0x01;
+        uint8_t lsb = (hi_byte >> i) & 0x01;
+        uint8_t colour_id = (msb << 1) | lsb;
+
+        pixels.at(i) = colour_id;
+    }
+
+    return pixels;
+}
+
+std::array<uint8_t, 8> Ppu::decode_sprite_tile_row(uint8_t hi_byte, uint8_t lo_byte, bool use_obj0_pallete)
+{
+    std::array<uint8_t, 8> pixels{};
+
+    // Starts from right pixel to left
+    for (int i = 7; i >= 0; --i)
+    {
+        uint8_t msb = (lo_byte >> i) & 0x01;
+        uint8_t lsb = (hi_byte >> i) & 0x01;
+        uint8_t colour_id = (msb << 1) | lsb;
+
+        pixels.at(i) = colour_id;
+    }
+
+    return pixels;
+}
+
+void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y)
+{
+    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) 
+    { 
+        if (debug_mode)
+            std::cout << "Screen out of range: " << screen_y << std::endl;
+        return; 
+    }
+
+    // Starts from right pixel to left
+    for (int i = 0; i < GBTile::SIZE_PIXELS; ++i)
+    {
+        int pixel_screen_x = screen_x + i;
+        
+        if (pixel_screen_x >= GBResolution::WIDTH) continue;
+        else if (pixel_screen_x < 0) break;
+
+        int buffer_index = (GBResolution::WIDTH * screen_y) + pixel_screen_x;
+        int bit_index = 7 - i;        
+        frame_buffer.at(buffer_index) = get_tile_colour(tile_pixels.at(bit_index));
+    }
+}
+
+void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, bool flip_x, bool bg_priority)
+{
+    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) 
+    { 
+        if (debug_mode)
+            std::cout << "Screen out of range: " << screen_y << std::endl; 
+        return; 
+    }
+
+    // Starts from right pixel to left
+    for (int i = 0; i < GBTile::SIZE_PIXELS; ++i)
+    {
+        int pixel_screen_x = screen_x + i;
+        
+        if (pixel_screen_x >= GBResolution::WIDTH) break;
+        else if (pixel_screen_x < 0) continue;
+
+        int bit_index = (flip_x) ? i : 7 - i;
+        uint8_t color = tile_pixels.at(bit_index);
+
+        if (color == 0) continue;
+
+        int buffer_index = (GBResolution::WIDTH * screen_y) + pixel_screen_x;
+        uint32_t& frame_buffer_color = frame_buffer.at(buffer_index);
+
+        if (bg_priority == 1 && frame_buffer_color != GBColours::COLOUR_00)
+            continue;
+
+        frame_buffer_color = get_tile_colour(color);
+    }
+}
+
+/* Whole-frame rendering methods (Debugging) */
 void Ppu::render_bg_frame()
 {
     for (int y = 0; y < GBResolution::HEIGHT; ++y) 
@@ -276,6 +337,7 @@ void Ppu::render_sprites_frame()
     }
 }
 
+/* Fill Screen w/ One Colour */
 void Ppu::reset_screen()
 {
     std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_11);
@@ -286,28 +348,9 @@ void Ppu::fill_white_screen()
     std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
 }
 
+/* PPU Mode Switching */
 void Ppu::update_ppu_mode(Mode new_mode)
 {
     ppu_mode = new_mode;
-    lcd_status &= (0xFC & static_cast<uint8_t>(new_mode));
-}
-
-
-void Ppu::render_tile(int tile_x, int tile_y)
-{
-    // 0x1F as the BG tile map is 32x32.
-    tile_x &= 0x1F;
-    tile_y &= 0x1F;
-
-    int screen_x = GBTile::SIZE_PIXELS * tile_x;
-    int screen_y = GBTile::SIZE_PIXELS * tile_y;
-
-    for (int y = 0; y < GBTile::SIZE_PIXELS; ++y)
-    { 
-        int tile_map_x = screen_x;
-        int tile_map_y = screen_y + y;
-
-        std::pair<uint8_t, uint8_t> tile_row = fetch_tile_row(tile_map_x, tile_map_y, true);
-        decode_tile_row(tile_row.first, tile_row.second, tile_map_x, tile_map_y);
-    }
+    lcd_status &= (0xFC | static_cast<uint8_t>(new_mode));
 }

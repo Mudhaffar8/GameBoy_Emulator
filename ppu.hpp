@@ -61,9 +61,9 @@ struct GBSprite
             uint8_t cgb_pallete : 3; // CGB Only
             uint8_t bank : 1; // CGB Only
             uint8_t dmg_pallete_number : 1; // If set to 0, the OBP0 register is used as the palette, otherwise OBP1
-            uint8_t x_flip : 1;
-            uint8_t y_flip : 1;
-            uint8_t obj_to_bg_priority : 1; // 0 = sprite always above bg, 1 = bg colors 1-3 overlay sprite, sprite still rendered above 0
+            uint8_t flip_x : 1;
+            uint8_t flip_y : 1;
+            uint8_t bg_priority : 1; // 0 = sprite always above bg, 1 = bg colors 1-3 overlay sprite, sprite still rendered above 0
         };  
     };
 
@@ -99,7 +99,7 @@ public:
         Drawing
     };
 
-    enum class LCDC
+    enum class LCDC : uint8_t
     {
         BgWindowEnable = 0x01, // Enables/Disables BG & Window; both become blank (white)
         ObjEnable = 0x02, // Enables objects (0 = Off; 1 = On)
@@ -111,7 +111,7 @@ public:
         LCDPpuEnable = 0x80 // 0 = Off; 1 - On
     };
 
-    enum class LCDStatus
+    enum class LCDStatus : uint8_t
     {
         PpuMode = 0b11,
         LycEqualsLy = 0b100,
@@ -137,9 +137,6 @@ public:
     void render_window_scanline(int screen_y);
     void render_sprites_scanline(int screen_y);
 
-    // Tile Rendering
-    void render_tile(int tile_x, int tile_y);
-
     // Frame Rendering
     void render_frame();
     void render_bg_frame();
@@ -151,9 +148,12 @@ public:
     void fill_white_screen();
 
     /* Tile Methods */
-    void decode_tile_row(uint8_t hi_byte, uint8_t lo_byte, int tile_screen_x, int screen_y);
     std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const; // For Window & Background Layers
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_id, int tile_map_y) const; // For Sprites Only
+    std::pair<uint8_t, uint8_t> fetch_sprite_tile_row(int tile_id, int tile_map_y) const; // For Sprites Only
+    std::array<uint8_t, 8> decode_tile_row(uint8_t hi_byte, uint8_t lo_byte);
+    std::array<uint8_t, 8> decode_sprite_tile_row(uint8_t hi_byte, uint8_t lo_byte, bool use_obj0_pallete);
+    void write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y);
+    void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, bool flip_x, bool bg_priority);
     uint32_t get_tile_colour(uint8_t bit2) const;
 
     /// @brief Frame buffer containing 32-bit RGBA pixel values.
@@ -164,7 +164,7 @@ public:
     inline void set_lcdc(LCDC lcdc_bit) { lcdc |= static_cast<uint8_t>(lcdc_bit); }
     inline bool check_lcdc(LCDC lcdc_bit) { return (lcdc & static_cast<uint8_t>(lcdc_bit)) != 0; }
     
-    // @brief Temporary setters for scroll values
+    /* Temporary setters for BG & Window scroll values */
     void set_bg_scroll_values(uint8_t scx, uint8_t scy)
     {
         this->bg_scroll_x = scx;
@@ -179,8 +179,12 @@ public:
 private:
     Mmu& mmu;
 
+    // PPU Register References
     uint8_t& lcdc; // LCD Control
     uint8_t& lcd_status; // LCD Status
+    uint8_t& bg_palette;
+    uint8_t& obj0_palette;
+    uint8_t& obj1_palette;
 
     std::vector<GBSprite> oam_buffer;
     

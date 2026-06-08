@@ -21,7 +21,7 @@ void ppu_window_frame_test(int scx, int scy);
 void ppu_sprite_frame_test(int sprite_x, int sprite_y);
 
 /* Scrolling tests w/ Window & BG */
-void ppu_sprite_scroll_test();
+void ppu_sprite_scroll_test(uint8_t tile_num, uint8_t attrib);
 void ppu_scroll_test(int scx, int scy); // Renders one frame with scrolling applied
 void ppu_scroll_test2(); 
 
@@ -44,6 +44,7 @@ int main(int argc, char** argv)
     ppu.debug_mode = debug_mode_enabled;
 
     ppu.set_lcdc(Ppu::LCDC::WindowTileMap);
+    ppu.set_lcdc(Ppu::LCDC::ObjSize);
 
     if (argv[1] == std::string("scroll_test"))
         ppu_scroll_test(scx, scy);
@@ -58,9 +59,8 @@ int main(int argc, char** argv)
     else if (argv[1] == std::string("sprite_test"))
         ppu_sprite_frame_test(scx, scy);
     else if (argv[1] == std::string("sprite_scroll"))
-        ppu_sprite_scroll_test();
-    else if (argv[1] == std::string("sprite_scroll"))
-        ppu_sprite_scroll_test();
+        ppu_sprite_scroll_test(scx, scy);
+
     return 0;
 }
 
@@ -68,28 +68,29 @@ void ppu_sprite_frame_test(int sprite_x, int sprite_y)
 {
     mmu.write_byte(sprite_y, OAM_START);
     mmu.write_byte(sprite_x, OAM_START + 1);
-    mmu.write_byte(0x01, OAM_START + 2);
+    mmu.write_byte(0x00, OAM_START + 2);
     mmu.write_byte(0x00, OAM_START + 3);
 
+    ppu.fill_white_screen();
     ppu.render_sprites_frame();
     display.update_screen();
 
     SDL_Delay(3000);
 }
 
-void ppu_sprite_scroll_test()
-{
+void ppu_sprite_scroll_test(uint8_t tile_num, uint8_t attrib)
+{    
     for (int i = 0; i < GBResolution::WIDTH + 9; ++i)
     {
         mmu.write_byte(i, OAM_START);
         mmu.write_byte(i, OAM_START + 1);
-        mmu.write_byte(0x01, OAM_START + 2);
-        mmu.write_byte(0x00, OAM_START + 3);
+        mmu.write_byte(tile_num, OAM_START + 2);
+        mmu.write_byte(attrib, OAM_START + 3);
 
         ppu.render_sprites_frame();
         display.update_screen();
 
-        ppu.reset_screen();
+        ppu.fill_white_screen();
 
         SDL_Delay(16);
     }
@@ -175,6 +176,9 @@ void ppu_scroll_test(int scx, int scy)
 
 void ppu_scroll_test2()
 {    
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable);
+    ppu.set_lcdc(Ppu::LCDC::WindowEnable);
+
     ppu.render_frame();
     display.update_screen();
 
@@ -194,7 +198,7 @@ void ppu_scroll_test2()
 
         // std::cout << "Scroll = (X: " << i << ", Y: " << i << ")\n";
 
-        SDL_Delay(10);
+        SDL_Delay(16);
     }
 
     auto end = std::chrono::steady_clock::now();
