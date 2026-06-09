@@ -41,7 +41,7 @@ namespace GBTiming
 namespace GBTile
 {
     constexpr int SIZE_PIXELS = 8;
-    constexpr int HEIGHT_SPRITE_PIXELS = 16;
+    constexpr int MAX_HEIGHT_SPRITE_PIXELS = 16;
 
     constexpr int BYTES_PER_TILE = 16;
     constexpr int BYTES_PER_ROW = 2;
@@ -58,9 +58,9 @@ struct GBSprite
         uint8_t attributes{};
         struct 
         {
-            uint8_t cgb_pallete : 3; // CGB Only
+            uint8_t cgb_palette : 3; // CGB Only
             uint8_t bank : 1; // CGB Only
-            uint8_t dmg_pallete_number : 1; // If set to 0, the OBP0 register is used as the palette, otherwise OBP1
+            uint8_t dmg_palette_number : 1; // If set to 0, the OBP0 register is used as the palette, otherwise OBP1
             uint8_t flip_x : 1;
             uint8_t flip_y : 1;
             uint8_t bg_priority : 1; // 0 = sprite always above bg, 1 = bg colors 1-3 overlay sprite, sprite still rendered above 0
@@ -121,6 +121,10 @@ public:
         LycSelect = 0x40,
     };
 
+    /// @brief Frame buffer containing 32-bit RGBA pixel values.
+    /// @todo Make this private.
+    std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
+
     bool debug_mode = false;
 
     /// @brief Advance PPU by a given number of cycles
@@ -148,21 +152,24 @@ public:
     void fill_white_screen();
 
     /* Tile Methods */
+    // Tile Row Fetching
     std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const; // For Window & Background Layers
     std::pair<uint8_t, uint8_t> fetch_sprite_tile_row(int tile_id, int tile_map_y) const; // For Sprites Only
+    
+    // Tile Row Decoding
     std::array<uint8_t, 8> decode_tile_row(uint8_t hi_byte, uint8_t lo_byte);
-    std::array<uint8_t, 8> decode_sprite_tile_row(uint8_t hi_byte, uint8_t lo_byte, bool use_obj0_pallete);
-    void write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y);
-    void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, bool flip_x, bool bg_priority);
+   
+    // Writing to Frame Buffer
+    void write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, std::array<uint8_t, 4>& palette);
+    void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, const GBSprite& sprite, std::array<uint8_t, 4>& palette);
+    
+    /* Palettes */
     uint32_t get_tile_colour(uint8_t bit2) const;
-
-    /// @brief Frame buffer containing 32-bit RGBA pixel values.
-    /// @todo Make this private.
-    std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
+    std::array<uint8_t, 4> get_palette(uint8_t palette);
 
     // LCDC Methods
     inline void set_lcdc(LCDC lcdc_bit) { lcdc |= static_cast<uint8_t>(lcdc_bit); }
-    inline bool check_lcdc(LCDC lcdc_bit) { return (lcdc & static_cast<uint8_t>(lcdc_bit)) != 0; }
+    inline bool check_lcdc(LCDC lcdc_bit) const { return (lcdc & static_cast<uint8_t>(lcdc_bit)) != 0; }
     
     /* Temporary setters for BG & Window scroll values */
     void set_bg_scroll_values(uint8_t scx, uint8_t scy)
@@ -187,6 +194,8 @@ private:
     uint8_t& obj1_palette;
 
     std::vector<GBSprite> oam_buffer;
+
+    std::array<uint8_t, GBResolution::WIDTH> scanline_buffer{}; // Keep track of raw colour indices per scanline
     
     Mode ppu_mode = Mode::OamScan;
 

@@ -12,9 +12,10 @@
 #include "memory.hpp"
 #include "ppu.hpp"
 
-/* CPU Speed Tests */
+/* Speed Tests */
 double cpu_speed_test();
 void cpu_avg_speed_test();
+void ppu_speed_test();
 
 /* Full Frame Tests */
 void ppu_window_frame_test(int scx, int scy);
@@ -30,6 +31,14 @@ void ppu_window_scanline_test(int scx, int scy);
 void ppu_bg_scanline_test(int scx, int scy);
 void ppu_scanline_test(int scx, int scy);
 
+/* Palette Tests */
+void bg_window_palette_tests(uint8_t palette);
+void sprite_palette_tests(uint8_t tile_num, uint8_t palette);
+
+/* Priority Tests */
+void priority_test();
+
+
 static Mmu mmu;
 static Cpu cpu(mmu);
 static Ppu ppu(mmu);
@@ -37,31 +46,102 @@ static Display display(ppu);
 
 int main(int argc, char** argv)
 {
-    int scx = std::atoi(argv[2]);
-    int scy = std::atoi(argv[3]);
+    int arg1 = std::atoi(argv[2]);
+    int arg2 = std::atoi(argv[3]);
     bool debug_mode_enabled = std::string(argv[4]) == "t";
 
     ppu.debug_mode = debug_mode_enabled;
 
-    ppu.set_lcdc(Ppu::LCDC::WindowTileMap);
-    ppu.set_lcdc(Ppu::LCDC::ObjSize);
+    mmu.write_byte(0b11100100, BG_PALETTE);
+    mmu.write_byte(0b11100100, OBJ_PALETTE_0);
+    mmu.write_byte(0b11100100, OBJ_PALETTE_1);
 
     if (argv[1] == std::string("scroll_test"))
-        ppu_scroll_test(scx, scy);
+        ppu_scroll_test(arg1, arg2);
     else if (argv[1] == std::string("scroll_test2"))
         ppu_scroll_test2();
     else if (argv[1] == std::string("window_scanline_test"))
-        ppu_window_scanline_test(scx, scy);
+        ppu_window_scanline_test(arg1, arg2);
     else if (argv[1] == std::string("scanline_test"))
-        ppu_scanline_test(scx, scy);
+        ppu_scanline_test(arg1, arg2);
     else if (argv[1] == std::string("window_test"))
-        ppu_window_frame_test(scx, scy);
+        ppu_window_frame_test(arg1, arg2);
     else if (argv[1] == std::string("sprite_test"))
-        ppu_sprite_frame_test(scx, scy);
+        ppu_sprite_frame_test(arg1, arg2);
     else if (argv[1] == std::string("sprite_scroll"))
-        ppu_sprite_scroll_test(scx, scy);
-
+        ppu_sprite_scroll_test(arg1, arg2);
+    else if (argv[1] == std::string("palette_test"))
+        bg_window_palette_tests(arg1);
+    else if (argv[1] == std::string("sprite_palette"))
+        sprite_palette_tests(arg1, arg2);
+    else if (argv[1] == std::string("priority_test"))
+        priority_test();
+    else if (argv[1] == std::string("ppu_speed_test"))
+        ppu_speed_test();
     return 0;
+}
+
+// Both Window, BG and Sprite Layers Drawing On top of each other
+// OAM buffer with 40 entries in 8x16 mode
+// Most computationally expensive scenario
+void ppu_speed_test()
+{
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable);
+    ppu.set_lcdc(Ppu::LCDC::WindowEnable);
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap);
+    ppu.set_lcdc(Ppu::LCDC::ObjEnable);
+    ppu.set_lcdc(Ppu::LCDC::ObjSize);
+
+    for (int i = 0; i < 40; ++i)
+    {
+        mmu.write_byte(16 + 5 * i, OAM_START + (4 * i));
+        mmu.write_byte(8 + 5 * i, OAM_START + (4 * i) + 1);
+        mmu.write_byte(i % 6, OAM_START + (4 * i) + 2);
+        mmu.write_byte(0x00, OAM_START + (4 * i) + 3);
+    }
+
+    auto start = std::chrono::steady_clock::now();
+
+    ppu.render_frame();
+    auto ppu_end = std::chrono::steady_clock::now();
+
+    double ppu_diff = std::chrono::duration<double, std::milli>(ppu_end - start).count();
+
+    display.update_screen();
+    auto end = std::chrono::steady_clock::now();
+    double diff = std::chrono::duration<double, std::milli>(end - start).count();
+
+    std::cout << "PPU Speed: " << ppu_diff << " ms.\n";
+    std::cout << "Total Speed: " << diff << " ms.\n";
+
+    SDL_Delay(3000);
+}
+
+void priority_test()
+{}
+
+void bg_window_palette_tests(uint8_t palette)
+{
+    mmu.write_byte(palette, BG_PALETTE);
+    
+    ppu.render_bg_frame();
+    ppu.render_window_frame();
+
+    SDL_Delay(3000);
+}
+
+void sprite_palette_tests(uint8_t tile_num, uint8_t palette)
+{
+    mmu.write_byte(palette, OBJ_PALETTE_0);
+
+    mmu.write_byte(40, OAM_START);
+    mmu.write_byte(40, OAM_START + 1);
+    mmu.write_byte(tile_num, OAM_START + 2);
+    mmu.write_byte(0x00, OAM_START + 3);
+
+    ppu.render_sprites_frame();
+
+    SDL_Delay(3000);
 }
 
 void ppu_sprite_frame_test(int sprite_x, int sprite_y)

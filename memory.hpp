@@ -32,7 +32,7 @@ constexpr uint16_t BANK_N_END = 0x7FFF;
 /* RAM */
 /* VRAM */
 constexpr uint16_t TILE_DATA_ADDR0_START = 0x8000; 
-constexpr uint16_t TILE_DATA_ADDR1_START = 0x8800;
+constexpr uint16_t TILE_DATA_ADDR1_START = 0x9000; // Or 0x8800 idk
 constexpr uint16_t TILE_DATA_END = 0x97FF;
 
 /* Tile Map Data */

@@ -33,7 +33,7 @@ void Timer::tick(uint32_t cycles)
             if (TIMA == 0xFF)
             {
                 TIMA = TMA;
-                GBInterrupts::request_interrupt(mem, GBInterrupts::Interrupts::Timer);
+                GBInterrupts::request_interrupt(mem, Interrupts::Timer);
             } 
             else ++TIMA;
 
