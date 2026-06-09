@@ -78,10 +78,11 @@ int main(int argc, char** argv)
         priority_test();
     else if (argv[1] == std::string("ppu_speed_test"))
         ppu_speed_test();
+        
     return 0;
 }
 
-// Both Window, BG and Sprite Layers Drawing On top of each other
+// Both Window, BG Drawing On top of each other
 // OAM buffer with 40 entries in 8x16 mode
 // Most computationally expensive scenario
 void ppu_speed_test()
@@ -103,11 +104,12 @@ void ppu_speed_test()
     auto start = std::chrono::steady_clock::now();
 
     ppu.render_frame();
-    auto ppu_end = std::chrono::steady_clock::now();
 
+    auto ppu_end = std::chrono::steady_clock::now();
     double ppu_diff = std::chrono::duration<double, std::milli>(ppu_end - start).count();
 
     display.update_screen();
+    
     auto end = std::chrono::steady_clock::now();
     double diff = std::chrono::duration<double, std::milli>(end - start).count();
 

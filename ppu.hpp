@@ -36,6 +36,8 @@ namespace GBTiming
     constexpr int CYCLES_PER_SCANLINE = 456;
     constexpr int CYCLES_PER_FRAME = CYCLES_PER_SCANLINE * TOTAL_SCANLINES;
     constexpr int CYCLES_OAM_SCAN = 80;
+    constexpr int CYCLES_DRAWING_MIN = 172; // Can range from 172 to 289
+    constexpr int CYCLES_HBLANK = CYCLES_PER_SCANLINE - CYCLES_DRAWING_MIN - CYCLES_OAM_SCAN;
 }
 
 namespace GBTile
@@ -93,10 +95,10 @@ public:
 
     enum class Mode : uint8_t
     {
-        HBlank,
-        VBlank,
-        OamScan,
-        Drawing
+        HBlank, // VRAM Accessible: VRAM, OAM, CGB palettes
+        VBlank, // VRAM Accessible: VRAM, OAM, CGB palettes
+        OamScan, // VRAM Accessible: VRAM, CGB palettes
+        Drawing // VRAM Accessible: None
     };
 
     enum class LCDC : uint8_t
@@ -113,12 +115,13 @@ public:
 
     enum class LCDStatus : uint8_t
     {
-        PpuMode = 0b11,
-        LycEqualsLy = 0b100,
-        Mode0Select = 0x08,
-        Mode1Select = 0x10,
-        Mode2Select = 0x20,
-        LycSelect = 0x40,
+        PpuMode = 0b11, // (Read-only): Indicates the PPU’s current status. Reports 0 instead when the PPU is disabled.
+        Coincidence = 0x04, // (Read-only): Set when LY contains the same value as LYC; it is constantly updated.
+        Mode0Select = 0x08, // (Read/Write): If set, selects the Mode 0 (HBlank) condition for the STAT interrupt.
+        Mode1Select = 0x10, // (Read/Write): If set, selects the Mode 1 (VBlank) condition for the STAT interrupt.
+        Mode2Select = 0x20, // (Read/Write): If set, selects the Mode 2 (OAM Scan) condition for the STAT interrupt.
+        LycIntSelect = 0x40, // (Read/Write): If set, selects the LYC == LY condition for the STAT interrupt.
+        Unused = 0x80 // Unused (Always 1)
     };
 
     /// @brief Frame buffer containing 32-bit RGBA pixel values.
@@ -167,9 +170,18 @@ public:
     uint32_t get_tile_colour(uint8_t bit2) const;
     std::array<uint8_t, 4> get_palette(uint8_t palette);
 
-    // LCDC Methods
+    /* LCDC Methods */
     inline void set_lcdc(LCDC lcdc_bit) { lcdc |= static_cast<uint8_t>(lcdc_bit); }
     inline bool check_lcdc(LCDC lcdc_bit) const { return (lcdc & static_cast<uint8_t>(lcdc_bit)) != 0; }
+
+    /* LCD Status Methods */
+    inline void set_lcd_status(LCDStatus lcd_status_bit, bool cond) 
+    { 
+        lcd_status= (cond) ? 
+            (lcd_status | static_cast<uint8_t>(lcd_status)) : 
+            (lcd_status & ~static_cast<uint8_t>(lcd_status));
+    }
+    inline bool check_lcd_status(LCDStatus lcd_status_bit) const { return (lcd_status & static_cast<uint8_t>(lcd_status_bit)) != 0; }
     
     /* Temporary setters for BG & Window scroll values */
     void set_bg_scroll_values(uint8_t scx, uint8_t scy)
@@ -189,13 +201,15 @@ private:
     // PPU Register References
     uint8_t& lcdc; // LCD Control
     uint8_t& lcd_status; // LCD Status
+    uint8_t& ly_compare; // LCD Y Coordinate
     uint8_t& bg_palette;
     uint8_t& obj0_palette;
     uint8_t& obj1_palette;
 
     std::vector<GBSprite> oam_buffer;
 
-    std::array<uint8_t, GBResolution::WIDTH> scanline_buffer{}; // Keep track of raw colour indices per scanline
+    // Keep track of raw colour indices per scanline
+    std::array<uint8_t, GBResolution::WIDTH> scanline_buffer{}; 
     
     Mode ppu_mode = Mode::OamScan;
 
@@ -209,5 +223,9 @@ private:
 
     uint32_t cycles_elapsed = 0;
 
+    /* Mode Switching */
     void update_ppu_mode(Mode new_mode);
+
+    inline void set_scanline(uint8_t new_scanline);
+    inline void update_coincidence_flag();
 };

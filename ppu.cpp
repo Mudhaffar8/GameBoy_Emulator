@@ -10,6 +10,7 @@ Ppu::Ppu(Mmu& _mmu) :
     mmu(_mmu),
     lcdc(mmu.read_byte_ref(LCD_CONTROL)),
     lcd_status(mmu.read_byte_ref(LCD_STATUS)),
+    ly_compare(mmu.read_byte_ref(LY_COMPARE)),
     bg_palette(mmu.read_byte_ref(BG_PALETTE)),
     obj0_palette(mmu.read_byte_ref(OBJ_PALETTE_0)),
     obj1_palette(mmu.read_byte_ref(OBJ_PALETTE_1))
@@ -17,6 +18,7 @@ Ppu::Ppu(Mmu& _mmu) :
     oam_buffer.reserve(10);
 }
 
+// While the PPU is accessing some video-related memory, that memory is inaccessible to the CPU (writes are ignored, and reads return garbage values, usually $FF).
 void Ppu::tick(uint32_t cycles)
 {
     cycles_elapsed += cycles;
@@ -24,12 +26,97 @@ void Ppu::tick(uint32_t cycles)
     switch (ppu_mode)
     {
     case Mode::OamScan:
+        if (cycles_elapsed >= GBTiming::CYCLES_OAM_SCAN)
+        {
+            oam_scan(scanline_y);
+            update_ppu_mode(Mode::Drawing);
+        }
         break;
     case Mode::Drawing:
+        if (cycles_elapsed >= GBTiming::CYCLES_OAM_SCAN + GBTiming::CYCLES_DRAWING_MIN)
+        {
+            render_scanline(scanline_y);
+            update_ppu_mode(Mode::HBlank);
+        }
         break;
     case Mode::HBlank:
+        if (cycles_elapsed >= GBTiming::CYCLES_PER_SCANLINE)
+        {
+            cycles_elapsed %= GBTiming::CYCLES_PER_SCANLINE;
+            set_scanline(scanline_y + 1);
+
+            if (scanline_y >= GBResolution::HEIGHT)
+                update_ppu_mode(Mode::VBlank);
+            else
+                update_ppu_mode(Mode::OamScan);
+        }
         break;
     case Mode::VBlank:
+        if (cycles_elapsed >= GBTiming::CYCLES_PER_SCANLINE)
+        {
+            cycles_elapsed %= GBTiming::CYCLES_PER_SCANLINE;
+            set_scanline(scanline_y + 1);
+
+            if (scanline_y >= GBTiming::TOTAL_SCANLINES)
+            {
+                set_scanline(0);
+                update_ppu_mode(Mode::OamScan);
+            }
+        }
+        break;
+    }
+}
+
+/* Scanline Methods */
+inline void Ppu::set_scanline(uint8_t new_scanline)
+{
+    scanline_y = new_scanline;
+    update_coincidence_flag();
+
+    if (check_lcd_status(LCDStatus::LycIntSelect))
+    {
+        if (scanline_y == ly_compare)
+            GBInterrupts::request_interrupt(mmu, Interrupts::LCD);
+    }
+}
+
+inline void Ppu::update_coincidence_flag()
+{
+    if (scanline_y == ly_compare)
+        set_lcd_status(LCDStatus::Coincidence, true);
+    else
+        set_lcd_status(LCDStatus::Coincidence, false);
+}
+
+/* PPU Mode Switching */
+void Ppu::update_ppu_mode(Mode new_mode)
+{
+    ppu_mode = new_mode;
+    lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(ppu_mode);
+
+    switch(new_mode)
+    {
+    case Mode::HBlank:
+        if (check_lcd_status(LCDStatus::Mode0Select))
+            GBInterrupts::request_interrupt(mmu, Interrupts::LCD);
+
+        break;
+        
+    case Mode::VBlank:
+        GBInterrupts::request_interrupt(mmu, Interrupts::VBlank);
+
+        if (check_lcd_status(LCDStatus::Mode1Select))
+            GBInterrupts::request_interrupt(mmu, Interrupts::LCD);
+
+        break;
+
+    case Mode::OamScan:
+        if (check_lcd_status(LCDStatus::Mode2Select))
+            GBInterrupts::request_interrupt(mmu, Interrupts::LCD);
+
+        break;
+    
+    case Mode::Drawing:
         break;
     }
 }
@@ -390,11 +477,4 @@ void Ppu::reset_screen()
 void Ppu::fill_white_screen()
 {
     std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
-}
-
-/* PPU Mode Switching */
-void Ppu::update_ppu_mode(Mode new_mode)
-{
-    ppu_mode = new_mode;
-    lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(ppu_mode);
 }

@@ -8,16 +8,17 @@ This is a work-in-progress GameBoy emulator written in C++. The primary goal of 
 - Cycle counting for all instructions complete
 - (Almost) all I/O registers memory-mapped.
 - Basic implementation of the Timer (still needs to be tested).
-- Some PPU features supported:
+- Most PPU features supported:
   - Per-scanline rendering
   - Background, window, and sprite layers
   - X and Y scrolling behaviors for all 3
+  - All sprite attributes (X & Y flipping, sprite vs. bg priority)
+  - BP, OBP0, and OBP1 palettes
  
 ## Planned Updates
 - Add more PPU features:
-  - Sprite attributes
-    - X and Y flipping
-    - Sprite vs. BG priority
   - PPU Mode switching (OAM Scan, HBlank, VBlank, Drawing)
+  - Run PPU Test ROMs
+- Test and fix the timer.
 
 This project is in active development, so stay tuned for updates.
