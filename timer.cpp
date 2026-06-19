@@ -1,25 +1,37 @@
 #include "timer.hpp"
 
-Timer::Timer(Mmu& _mem) : 
-    mem(_mem),
-    DIV(mem.read_byte_ref(DIVIDER_REGISTER)),
-    TIMA(mem.read_byte_ref(TIMER_CONTROL)),
-    TMA(mem.read_byte_ref(TIMER_MODULO)),
-    TAC(mem.read_byte_ref(TIMER_CONTROL))
+#include <iostream>
+
+Timer::Timer(Mmu& _mmu) : 
+    mmu(_mmu),
+    div(mmu.read_byte_ref(DIVIDER_REGISTER)),
+    tima(mmu.read_byte_ref(TIMER_COUNTER)),
+    tma(mmu.read_byte_ref(TIMER_MODULO)),
+    tac(mmu.read_byte_ref(TIMER_CONTROL))
 {}
 
 void Timer::tick(uint32_t cycles)
 {
+    /*
+    div_counter += cycles;
+    div = (div_counter & 0xFF00) >> 8; // only upper 8 bits mapped to memory
+
+    bool tima_enable = (tac & 0b100) != 0; 
+    if (!tima_enable) return;
+
+    uint32_t clock_freq = clock_select_freq[tac & 0b11]; // find rate TIMA reg is incremented
+    uint16_t bit_n = div_counter & clock_freq;
+    */
     div_counter += cycles;
 
     if (div_counter >= 256) 
     { 
-        ++DIV; 
+        ++div; 
         div_counter %= 256;
     }
 
-    bool tima_enable = (TAC & 0b100) != 0;
-    uint32_t clock_freq = clock_select_freq[TAC & 0b11];
+    bool tima_enable = (tac & 0b100) != 0;
+    uint32_t clock_freq = clock_select_freq[tac & 0b11];
 
     if (!tima_enable) return;
 
@@ -30,14 +42,24 @@ void Timer::tick(uint32_t cycles)
 
         if (timer_counter >= clock_freq)
         {
-            if (TIMA == 0xFF)
+            if (tima == 0xFF)
             {
-                TIMA = TMA;
-                GBInterrupts::request_interrupt(mem, Interrupts::Timer);
+                tima = tma;
+                GBInterrupts::request_interrupt(mmu, Interrupts::Timer);
             } 
-            else ++TIMA;
+            else ++tima;
 
             timer_counter %= clock_freq;
         }
     }
+}
+
+void Timer::test(uint32_t cycles)
+{
+    tick(cycles);
+
+    std::cout << "Divider Register: " << div_counter << '\n';
+    std::cout << "TIMA Register: " << +tima << '\n';
+    std::cout << "TMA Register: " << +tma << '\n';
+    std::cout << "TAC Register: " << +tac << '\n';
 }

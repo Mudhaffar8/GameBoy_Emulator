@@ -21,22 +21,22 @@ Mmu::Mmu()
 
     std::copy(tileset_tiles.begin(), tileset_tiles.end(), memory.begin() + TILE_DATA_ADDR0_START);
 
-    std::fill(memory.begin() + BG_TILE_MAP_START, memory.begin() + BG_TILE_MAP_END + 1, 0x03);
-    std::fill(memory.begin() + WINDOW_TILE_MAP_START, memory.begin() + WINDOW_TILE_MAP_END + 1, 0x01);
+    std::fill(memory.begin() + TILE_MAP_9800_START, memory.begin() + TILE_MAP_9800_END + 1, 0x03);
+    std::fill(memory.begin() + TILE_MAP_9C00_START, memory.begin() + TILE_MAP_9C00_END + 1, 0x01);
 
-    memory[WINDOW_TILE_MAP_START + 8] = 0x04;
-    memory[WINDOW_TILE_MAP_START + 64] = 0x00; // Make tile Mario's face
+    memory[TILE_MAP_9C00_START + 8] = 0x04;
+    memory[TILE_MAP_9C00_START + 64] = 0x00; // Make tile Mario's face
 
-    memory[BG_TILE_MAP_START + 64] = 0x00; // Make tile Mario's face
-    memory[BG_TILE_MAP_START + 8] = 0x02; // Make 8th tile checkered pattern
-    memory[BG_TILE_MAP_START + 4] = 0x05; // Make 4th tile checkered pattern
+    memory[TILE_MAP_9800_START + 64] = 0x00; // Make tile Mario's face
+    memory[TILE_MAP_9800_START + 8] = 0x02; // Make 8th tile checkered pattern
+    memory[TILE_MAP_9800_START + 4] = 0x05; // Make 4th tile checkered pattern
 
     // Print out Tile Map
     // for (int i = 0; i < 32; ++i)
     // {
     //     for (int j = 0; j < 32; ++j)
     //     {
-    //         std::cout << +memory[BG_TILE_MAP_START + 32 * j + i] << ", ";
+    //         std::cout << +memory[TILE_MAP_9C00_START + 32 * j + i] << ", ";
     //     }
     //     std::cout << '\n';
     // }
@@ -58,14 +58,13 @@ bool Mmu::load_rom(const char* path)
     }
 
     size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
-    if (file_size > MEMORY_SIZE)
+    if (file_size > ROM_CODE_END + 1)
     {
         std::cerr << "File size is too large" << std::endl;
         return false;
     }
 
-    std::vector<uint8_t> buffer;
-    buffer.reserve(file_size);
+    std::array<uint8_t, MEMORY_SIZE> buffer{};
 
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(buffer.data()), file_size);

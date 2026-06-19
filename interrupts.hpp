@@ -16,10 +16,23 @@ enum class Interrupts : uint8_t
 
 namespace GBInterrupts
 {
-    inline void request_interrupt(Mmu& mem, Interrupts interrupt);
+    inline void request_interrupt(Mmu& mem, Interrupts interrupt)
+    {
+        uint8_t& interrupt_flag = mem.read_byte_ref(INTERRUPT_FLAG);
+        interrupt_flag |= static_cast<uint8_t>(interrupt);
+    }
 
-    /* Requesting Interrupts */
-    inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt); // Checks if an interrupt is both requested and enabled.
+    inline void unset_interrupt(Mmu& mem, Interrupts interrupt)
+    {
+        uint8_t& interrupt_flag = mem.read_byte_ref(INTERRUPT_FLAG);
+        interrupt_flag &= ~static_cast<uint8_t>(interrupt);
+    }
+
+    /* Checking Interrupts */
+    inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt) // Checks if an interrupt is both requested and enabled.
+    {
+        return mem.read_byte(INTERRUPT_FLAG) & mem.read_byte(INTERRUPT_ENABLE) & static_cast<uint8_t>(interrupt);
+    }
     inline bool is_interrupt_requested(Mmu& mem, Interrupts interrupt);
     inline bool is_interrupt_enabled(Mmu& mem, Interrupts interrupt);
 }

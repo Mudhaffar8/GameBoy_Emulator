@@ -20,7 +20,7 @@ public:
 
     /// @brief Polls SDL input events and updates input buffer.
     /// @param buffer Input buffer to be updated.
-    void handle_input(std::array<bool, 16>& buffer);
+    void handle_input();
 
     /// @brief Updates screen using PPU's current frame buffer.
     void update_screen();

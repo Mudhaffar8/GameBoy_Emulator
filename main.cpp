@@ -11,6 +11,7 @@
 #include "display.hpp"
 #include "memory.hpp"
 #include "ppu.hpp"
+#include "timer.hpp"
 
 /* Speed Tests */
 double cpu_speed_test();
@@ -38,11 +39,20 @@ void sprite_palette_tests(uint8_t tile_num, uint8_t palette);
 /* Priority Tests */
 void priority_test();
 
+/* PPU Attempt */
+void ppu_attempt();
+
+/* Interrupt Test */
+void interrupt_test();
+
+/* Enable Test */
+void enable_disable_bg_test();
 
 static Mmu mmu;
 static Cpu cpu(mmu);
 static Ppu ppu(mmu);
 static Display display(ppu);
+static Timer timer(mmu);
 
 int main(int argc, char** argv)
 {
@@ -55,7 +65,16 @@ int main(int argc, char** argv)
     mmu.write_byte(0b11100100, BG_PALETTE);
     mmu.write_byte(0b11100100, OBJ_PALETTE_0);
     mmu.write_byte(0b11100100, OBJ_PALETTE_1);
+    
+    ppu.set_lcd_status(Ppu::LCDStatus::Unused, true);
 
+    ppu.set_lcdc(Ppu::LCDC::LCDPpuEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+
+    //std::cout << "Initialized before program starts ^\n";
+    
     if (argv[1] == std::string("scroll_test"))
         ppu_scroll_test(arg1, arg2);
     else if (argv[1] == std::string("scroll_test2"))
@@ -78,20 +97,98 @@ int main(int argc, char** argv)
         priority_test();
     else if (argv[1] == std::string("ppu_speed_test"))
         ppu_speed_test();
+    else if (argv[1] == std::string("ppu_attempt")) 
+        ppu_attempt();
+    else if (argv[1] == std::string("interrupt_test"))
+        interrupt_test();
+    else if (argv[1] == std::string("enable_bg_test"))
+        enable_disable_bg_test();
         
     return 0;
 }
 
-// Both Window, BG Drawing On top of each other
+void enable_disable_bg_test()
+{
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgTileMapArea, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    
+    while (true)
+    {
+        ppu.render_frame();
+        display.update_screen();
+        
+        SDL_Delay(1000);
+        
+        ppu.set_lcdc(
+            Ppu::LCDC::BgWindowEnable, 
+            !ppu.check_lcdc(Ppu::LCDC::BgWindowEnable)
+        );
+    }
+}
+
+void interrupt_test()
+{
+    cpu.get_ime() = true;
+
+    uint32_t cycles_elapsed = 0;
+    while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
+    {
+        uint32_t cycles = cpu.execute_instruction();
+        ppu.tick(cycles);
+
+        cycles_elapsed += cycles;
+    }
+
+    display.update_screen();
+
+    std::cout << "Interrupt Flag: " << std::hex << +mmu.read_byte(INTERRUPT_FLAG) << '\n';
+    std::cout << "Interrupt Enable: " << std::hex << +mmu.read_byte(INTERRUPT_ENABLE);
+
+    SDL_Delay(3000);
+}
+
+void ppu_attempt()
+{
+    mmu.load_rom("./dmg-acid2.gb");
+    bool is_running = true;
+
+    uint32_t cycles_elapsed = 0;
+    while (is_running)
+    {
+        auto start = std::chrono::steady_clock::now();
+        
+        while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
+        {
+            uint32_t cycles = cpu.execute_instruction();
+            ppu.tick(cycles);
+            
+            cycles_elapsed += cycles;
+        }
+
+        cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
+
+        display.update_screen();
+
+        auto end = std::chrono::steady_clock::now();
+        double diff = std::chrono::duration<double, std::milli>(end - start).count();
+
+        uint16_t time = (diff < 16.67f) ? diff : 16.67f;
+        SDL_Delay(time);
+    }
+}
+
+// Both Window, BG drawing On top of each other
 // OAM buffer with 40 entries in 8x16 mode
 // Most computationally expensive scenario
 void ppu_speed_test()
 {
-    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable);
-    ppu.set_lcdc(Ppu::LCDC::WindowEnable);
-    ppu.set_lcdc(Ppu::LCDC::WindowTileMap);
-    ppu.set_lcdc(Ppu::LCDC::ObjEnable);
-    ppu.set_lcdc(Ppu::LCDC::ObjSize);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    ppu.set_lcdc(Ppu::LCDC::WindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+    ppu.set_lcdc(Ppu::LCDC::ObjEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::ObjSize, true);
 
     for (int i = 0; i < 40; ++i)
     {
@@ -237,7 +334,7 @@ void ppu_bg_scroll_test(int scx, int scy)
 {
     ppu.set_bg_scroll_values(scx, scy);
 
-    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
 
     ppu.render_frame();
     display.update_screen();
@@ -257,9 +354,10 @@ void ppu_scroll_test(int scx, int scy)
 }
 
 void ppu_scroll_test2()
-{    
-    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable);
-    ppu.set_lcdc(Ppu::LCDC::WindowEnable);
+{  
+    ppu.set_lcdc(Ppu::LCDC::WindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::ObjEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::ObjSize, true);
 
     ppu.render_frame();
     display.update_screen();
@@ -311,8 +409,6 @@ double cpu_speed_test()
 {
     uint32_t buffer[GBResolution::HEIGHT * GBResolution::WIDTH]{};
     std::fill(buffer, buffer + sizeof(buffer) / sizeof(buffer[0]), GBColours::COLOUR_10);
-
-    Display display(ppu);
 
     mmu.write_byte(0x27, 0); // DAA
     mmu.write_byte(0x0F, 1); // RLCA

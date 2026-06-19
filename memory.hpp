@@ -4,6 +4,8 @@
 
 #include <cstdint>
 #include <array>
+#include <iostream>
+
 
 /// @todo Add namespaces
 constexpr size_t MEMORY_SIZE = 0x10000;
@@ -39,11 +41,11 @@ constexpr uint16_t TILE_DATA_END = 0x97FF;
 constexpr uint16_t TILE_MAP_START = 0x9800; 
 constexpr uint16_t TILE_MAP_END = 0x9FFF;
 
-constexpr uint16_t BG_TILE_MAP_START = 0x9800; 
-constexpr uint16_t BG_TILE_MAP_END = 0x9BFF;
+constexpr uint16_t TILE_MAP_9800_START = 0x9800; 
+constexpr uint16_t TILE_MAP_9800_END = 0x9BFF;
 
-constexpr uint16_t WINDOW_TILE_MAP_START = 0x9C00; 
-constexpr uint16_t WINDOW_TILE_MAP_END = 0x9FFF;
+constexpr uint16_t TILE_MAP_9C00_START = 0x9C00; 
+constexpr uint16_t TILE_MAP_9C00_END = 0x9FFF;
 
 /* Switchable Cartridge RAM */
 constexpr uint16_t CARTRIDGE_RAM_START = 0xA000; 
@@ -118,6 +120,9 @@ constexpr uint16_t INTERRUPT_ENABLE = 0xFFFF;
 constexpr uint16_t HIGH_RAM_START = 0xFF80;
 constexpr uint16_t HIGH_RAM_END = 0xFFFE;
 
+constexpr uint16_t PRINT_MODE_VAR = JOYPAD_INPUT;
+constexpr uint16_t FRAMES_ELAPSED = UNUSABLE_START;
+
 /// @brief Handles reads and writes to the Game Boy's addressable memory.
 /// Provides functions for accessing memory and loading cartridge/ROM data into memory.
 class Mmu
@@ -129,6 +134,7 @@ public:
     /// @todo Perform checks to prevent illegal writes to memory
     inline void write_byte(uint8_t byte, int address) { memory.at(address) = byte; }
 
+
     /* Reading from memory */
     /// @todo Perform checks to prevent illegal reads to memory
     inline uint8_t read_byte(int address) const { return memory.at(address); }
@@ -137,6 +143,8 @@ public:
     /* Loading programs into memory */
     bool load_cartridge(Cartridge& cartridge);
     bool load_rom(const char* path); /// @note For Testing Purposes
+
+    std::array<uint8_t, MEMORY_SIZE>& get_mem_ref() { return memory; }
 
 private:
     std::array<uint8_t, MEMORY_SIZE> memory{};

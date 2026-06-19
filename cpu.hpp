@@ -5,6 +5,12 @@
 
 #include <cstdint>
 
+constexpr uint16_t DMG_AF_INIT = 0x01B0;
+constexpr uint16_t DMG_BC_INIT = 0x0013;
+constexpr uint16_t DMG_DE_INIT = 0x00D8;
+constexpr uint16_t DMG_HL_INIT = 0x014D;
+constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
+
 /// @brief Represents a 16-bit register that can also be treated as two 8-bit values.
 /// @note Implementation assumes your system is little-endian. 
 struct RegPair
@@ -16,7 +22,7 @@ struct RegPair
     };
 
     /* Constructors */
-    RegPair() : r16(0) {}
+    RegPair() {}
     RegPair(uint16_t _r16) : r16(_r16) {}
     RegPair(uint8_t _high, uint8_t _low) : low(_low), high(_high) {}
 };
@@ -39,6 +45,20 @@ public:
     void print_registers() const;
     void print_flags() const;
 
+    /* Temporary Getters */
+    RegPair& get_af() { return AF; }
+    RegPair& get_bc() { return BC; }
+    RegPair& get_de() { return DE; }
+    RegPair& get_hl() { return HL; }
+
+    uint8_t& get_A() { return A; }
+    uint8_t& get_F() { return F; }
+
+    uint16_t& get_pc() { return PC; }
+    uint16_t& get_sp() { return SP; }
+
+    bool& get_halted_state() { return is_halted; }
+    bool& get_ime() { return IME; }
 private:
     Mmu& mem;
     
@@ -50,21 +70,22 @@ private:
         HalfCarry = 0x20,
         Carry = 0x10
     };
+    
 
     /* CPU Registers */
     // 16-bit Register pairs
-    RegPair AF;
-    RegPair BC;
-    RegPair DE;
-    RegPair HL;
+    RegPair AF{DMG_AF_INIT};
+    RegPair BC{DMG_BC_INIT};
+    RegPair DE{DMG_DE_INIT};
+    RegPair HL{DMG_HL_INIT};
 
     // Special case Registers 
     uint8_t& A = AF.high; // Accumulator
     uint8_t& F = AF.low; // Flags
 
     // 16-bit Registers
-    uint16_t PC; // Program Counter
-    uint16_t SP; // Stack Pointer
+    uint16_t PC = ROM_CODE_START; // Program Counter
+    uint16_t SP = HIGH_RAM_END; // Stack Pointer
 
     /* Interrupt handling Register/variables */
     uint8_t IR = 0; // 8-bit Instruction Register

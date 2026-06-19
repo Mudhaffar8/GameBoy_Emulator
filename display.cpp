@@ -52,21 +52,19 @@ Display::~Display()
     SDL_Quit();
 }
 
-void Display::handle_input(std::array<bool, 16>& key_input)
+void Display::handle_input()
 {
     while (SDL_PollEvent(&event))
     {
         switch (event.type)
         {
         case SDL_EVENT_QUIT:
-            is_running = false;
             break;
 
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
             {
             case SDL_SCANCODE_ESCAPE:
-                is_running = false;
                 break;
             }
             break;

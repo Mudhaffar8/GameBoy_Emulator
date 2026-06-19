@@ -13,12 +13,18 @@ Ppu::Ppu(Mmu& _mmu) :
     ly_compare(mmu.read_byte_ref(LY_COMPARE)),
     bg_palette(mmu.read_byte_ref(BG_PALETTE)),
     obj0_palette(mmu.read_byte_ref(OBJ_PALETTE_0)),
-    obj1_palette(mmu.read_byte_ref(OBJ_PALETTE_1))
+    obj1_palette(mmu.read_byte_ref(OBJ_PALETTE_1)),
+    bg_scroll_x(mmu.read_byte_ref(VIEWPORT_X_POS)),
+    bg_scroll_y(mmu.read_byte_ref(VIEWPORT_Y_POS)),
+    window_scroll_x(mmu.read_byte_ref(WINDOW_X_POS)),
+    window_scroll_y(mmu.read_byte_ref(WINDOW_Y_POS)),
+    scanline_y(mmu.read_byte_ref(LCD_Y_COORDINATE))
 {
     oam_buffer.reserve(10);
 }
 
-// While the PPU is accessing some video-related memory, that memory is inaccessible to the CPU (writes are ignored, and reads return garbage values, usually $FF).
+// While the PPU is accessing some video-related memory, 
+// that memory is inaccessible to the CPU (writes are ignored, and reads return garbage values, usually $FF).
 void Ppu::tick(uint32_t cycles)
 {
     cycles_elapsed += cycles;
@@ -103,6 +109,7 @@ void Ppu::update_ppu_mode(Mode new_mode)
         break;
         
     case Mode::VBlank:
+        window_internal_scanline_y = 0;
         GBInterrupts::request_interrupt(mmu, Interrupts::VBlank);
 
         if (check_lcd_status(LCDStatus::Mode1Select))
@@ -156,8 +163,11 @@ void Ppu::render_frame()
     }
 }
 
-void Ppu::render_scanline(int screen_y)
+void Ppu::render_scanline(uint8_t screen_y)
 {
+    if (!check_lcdc(LCDC::LCDPpuEnable)) 
+        return;
+
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
     bool bg_window_enable = check_lcdc(LCDC::BgWindowEnable);
@@ -168,9 +178,12 @@ void Ppu::render_scanline(int screen_y)
         bool window_enable = check_lcdc(LCDC::WindowEnable);
         if (window_enable)
             render_window_scanline(screen_y);
+        
+        //std::cout << "\n";
     }
     else
     {
+        //std::cout << "BG LINE Y-" << screen_y << " NOT ENABLED!\n";
         std::fill(
             frame_buffer.begin() + (GBResolution::WIDTH * screen_y), 
             frame_buffer.begin() + (GBResolution::WIDTH * screen_y) + GBResolution::WIDTH,
@@ -185,15 +198,15 @@ void Ppu::render_scanline(int screen_y)
 
 /// @brief 
 /// @param y the y-position of the scanline in SCREEN coordinates
-void Ppu::render_bg_scanline(int screen_y)
+void Ppu::render_bg_scanline(uint8_t screen_y)
 {
-    int tile_map_y = (screen_y + bg_scroll_y) & 0xFF;
+    int tile_map_y = (static_cast<int>(screen_y) + bg_scroll_y) & 0xFF;
 
     // SCX mod 8 => pixels to discard from left
     // 8 - (SCX mod 8) => pixels to discard from right tile 
     int tile_offset_x = bg_scroll_x % GBTile::SIZE_PIXELS;
     
-    bool use_bg_tile_map = check_lcdc(LCDC::BgTileMapArea);
+    bool use_9C00_tile_map = check_lcdc(LCDC::BgTileMapArea);
 
     auto palette = get_palette(bg_palette);
 
@@ -202,7 +215,7 @@ void Ppu::render_bg_scanline(int screen_y)
     {
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = (screen_x + bg_scroll_x) & 0xFF;
-        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_bg_tile_map);
+        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_9C00_tile_map);
 
         // Get x-value of leftmost pixel on the tile in SCREEN coordinates
         int last_tile_screen_x = screen_x - tile_offset_x;
@@ -212,12 +225,15 @@ void Ppu::render_bg_scanline(int screen_y)
     }
 }
 
-void Ppu::render_window_scanline(int screen_y)
+void Ppu::render_window_scanline(uint8_t screen_y)
 {
-    if (screen_y < window_scroll_y || screen_y >= GBResolution::HEIGHT) return;
+    if (screen_y < window_scroll_y || 
+        screen_y >= GBResolution::HEIGHT ||
+        window_scroll_x >= GBResolution::WIDTH
+    ) return;
 
     // Key Difference: Window Layer does not loop
-    int tile_map_y = screen_y - window_scroll_y;
+    int tile_map_y = static_cast<int>(screen_y) - window_scroll_y;
 
     int total_scroll_x = window_scroll_x - 7;
     int visible_tiles = (GBResolution::WIDTH - total_scroll_x) / GBTile::SIZE_PIXELS + 1; 
@@ -226,7 +242,7 @@ void Ppu::render_window_scanline(int screen_y)
 
     //std::cout << "Window Scanline #" << screen_y << '\n';
 
-    bool use_bg_tile_map = check_lcdc(LCDC::WindowTileMap);
+    bool use_9C00_tile_map = check_lcdc(LCDC::WindowTileMap);
 
     auto palette = get_palette(bg_palette);
 
@@ -238,13 +254,15 @@ void Ppu::render_window_scanline(int screen_y)
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = screen_x + total_scroll_x; // Window Layer does not loop
         
-        auto tile_row = fetch_tile_row(screen_x, tile_map_y, use_bg_tile_map);
+        auto tile_row = fetch_tile_row(screen_x, window_internal_scanline_y, use_9C00_tile_map);
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
         write_pixels(tile_pixels, tile_map_x, screen_y, palette);
     }
+
+    ++window_internal_scanline_y;
 }
 
-void Ppu::render_sprites_scanline(int screen_y)
+void Ppu::render_sprites_scanline(uint8_t screen_y)
 {
     bool is_8x16 = check_lcdc(LCDC::ObjSize);
     int max_obj_height_idx = is_8x16 ? 15 : 7;
@@ -262,9 +280,6 @@ void Ppu::render_sprites_scanline(int screen_y)
             max_obj_height_idx - (screen_y - obj_screen_y) : 
             screen_y - obj_screen_y; 
 
-        if (debug_mode) 
-            std::cout << "Tile Row Y: " << tile_row_y << '\n';
-
         auto& palette = (sprite.dmg_palette_number == 0) ? 
             obj_palette_0 : 
             obj_palette_1;
@@ -281,7 +296,7 @@ void Ppu::render_sprites_scanline(int screen_y)
 // LY + 16 must be greater than or equal to Sprite Y-Position
 // LY + 16 must be less than Sprite Y-Position + Sprite Height (8 in Normal Mode, 16 in Tall-Sprite-Mode)
 // The amount of sprites already stored in the OAM Buffer must be less than 10
-void Ppu::oam_scan(int screen_y)
+void Ppu::oam_scan(uint8_t screen_y)
 {
     constexpr int TOTAL_OAM_ENTRIES = (OAM_END - OAM_START + 1) / static_cast<uint16_t>(sizeof(GBSprite));
     
@@ -327,19 +342,29 @@ void Ppu::oam_scan(int screen_y)
     }
 }
 
-std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const
+std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map) const
 { 
     int tile_x = (tile_map_x / GBTile::SIZE_PIXELS) & 0x1F;
     int tile_y = (tile_map_y / GBTile::SIZE_PIXELS) & 0x1F;
     int tile_id_offset = tile_x + (GBResolution::TILES_PER_ROW * tile_y); 
 
-    uint16_t tile_map_start = use_bg_tile_map ? BG_TILE_MAP_START : WINDOW_TILE_MAP_START;
+    uint16_t tile_map_start = use_9C00_tile_map ? TILE_MAP_9C00_START : TILE_MAP_9800_START;
     uint8_t tile_id = mmu.read_byte(tile_map_start + tile_id_offset);
 
     // Points to first row of tile
     uint16_t tile_address = check_lcdc(LCDC::BgWindowTileDataArea) ?
         TILE_DATA_ADDR0_START + (tile_id * GBTile::BYTES_PER_TILE) : 
         TILE_DATA_ADDR1_START + (static_cast<int8_t>(tile_id) * GBTile::BYTES_PER_TILE);
+
+    // if (scanline_y >= 136 && scanline_y < 144)
+    // {
+
+    //     bool bgwindowtiledatarea = check_lcdc(LCDC::BgWindowTileDataArea);
+    //     std::cout << "Tile Address " << std::hex << +tile_address 
+    //         << " Tile ID: " << std::dec << (bgwindowtiledatarea ? static_cast<int8_t>(tile_id) : tile_id) 
+    //         << " on Scanline Y " << scanline_y 
+    //         << " Tile Addressing Method " << (bgwindowtiledatarea ? "0x8000" : "0x8800") << ",\n";
+    // }
     
     // Points to correct row of tile
     uint16_t row_address = tile_address

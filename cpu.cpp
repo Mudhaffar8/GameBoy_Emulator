@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept> // Should get rid of these soon
-
+#include <array>
 
 constexpr uint8_t CB_U3_BITMASK = 0b111000;
 constexpr uint8_t CB_OP_BITMASK = 0b111;
@@ -20,22 +20,8 @@ constexpr uint8_t LSB_BITMASK = 0x01;
 constexpr uint8_t LOW_NIBBLE_MASK = 0x0F;
 constexpr uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
-constexpr uint16_t DMG_AF_INIT = 0x01B0;
-constexpr uint16_t DMG_BC_INIT = 0x0013;
-constexpr uint16_t DMG_DE_INIT = 0x00D8;
-constexpr uint16_t DMG_HL_INIT = 0x014D;
-constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
-
-
 Cpu::Cpu(Mmu& _mem) :
-    mem(_mem),
-    AF(DMG_AF_INIT), 
-    BC(DMG_BC_INIT), 
-    DE(DMG_DE_INIT), 
-    HL(DMG_HL_INIT),
-    PC(),
-    SP(DMG_SP_INIT),
-    IR()
+    mem(_mem)
 {}
 
 void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
@@ -308,6 +294,12 @@ uint32_t Cpu::execute_instruction()
     IR = mem.read_byte(PC++);
 
     ticks = 4;
+
+    // if (PC < 0x482E || PC > 0x4834 || PC-1 < 0x4837 || PC-2 > 0x4839)
+    // {
+    // std::cout << "Program Counter: " << std::hex << (PC - 1) << " Instruction: " << "0x" << std::hex << +IR << " ";
+    // print_flags();
+    // }
 
     switch (IR)
     {
@@ -1955,17 +1947,18 @@ inline void Cpu::daa()
 
 void Cpu::check_interrupts()
 {
-    uint8_t interrupt_check = mem.read_byte(INTERRUPT_ENABLE) & mem.read_byte(INTERRUPT_FLAG) & HIGH_NIBBLE_MASK;
+    uint8_t interrupt_check = mem.read_byte(INTERRUPT_ENABLE) 
+        & mem.read_byte(INTERRUPT_FLAG) 
+        & 0x1F;
 
     if (interrupt_check != 0)
     {
         is_halted = false;
         
-        if (IME) handle_interrupt();
-        else 
-        {
-            // TODO: Implement HALT Bug
-        }
+        if (IME) 
+            handle_interrupt();
+
+        /// @todo Implement Halt Bug
     }
 }
 
@@ -1975,36 +1968,27 @@ void Cpu::check_interrupts()
 // 4 T-cycles = set PC to Interrupt Address
 void Cpu::handle_interrupt()
 {
-    std::cout << "Handler" << std::endl;
+    //std::cout << "Interrupt Handler Triggered!" << std::endl;
     IME = false;
 
-    uint8_t interrupt_flag = mem.read_byte(INTERRUPT_FLAG);
-    uint8_t interrupt = interrupt_flag & mem.read_byte(INTERRUPT_ENABLE);
+    static constexpr std::array<std::pair<uint16_t, Interrupts>, 5> interrupt_sources = {{
+        {VBLANK_INTERRUPT_START, Interrupts::VBlank},
+        {STAT_INTERRUPT_START, Interrupts::LCD},
+        {TIMER_INTERRUPT_STARRT, Interrupts::Timer},
+        {SERIAL_INTERRUPT_START, Interrupts::Serial},
+        {JOYPAD_INTERRUPT_START, Interrupts::JoyPad}
+    }};
 
-    if ((interrupt & static_cast<uint8_t>(Interrupts::VBlank)) != 0)
+    for (auto& [address, interrupt] : interrupt_sources)
     {
-        mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
-        call_n16(VBLANK_INTERRUPT_START);
-    }
-    else if ((interrupt & static_cast<uint8_t>(Interrupts::LCD)) != 0)
-    {
-        mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::LCD), INTERRUPT_FLAG);
-        call_n16(SERIAL_INTERRUPT_START);
-    }
-    else if ((interrupt & static_cast<uint8_t>(Interrupts::Timer)) != 0)
-    {
-        mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Timer), INTERRUPT_FLAG);
-        call_n16(TIMER_INTERRUPT_STARRT);
-    }
-    else if ((interrupt & static_cast<uint8_t>(Interrupts::Serial)) != 0)
-    {
-        mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::Serial), INTERRUPT_FLAG);
-        call_n16(SERIAL_INTERRUPT_START);
-    }
-    else if ((interrupt & static_cast<uint8_t>(Interrupts::JoyPad)) != 0)
-    {
-        mem.write_byte(interrupt_flag & ~static_cast<uint8_t>(Interrupts::VBlank), INTERRUPT_FLAG);
-        call_n16(JOYPAD_INTERRUPT_START);
+        if (GBInterrupts::is_interrupt_queued(mem, interrupt))
+        {
+            //std::cout << "Executing sequenece @ 0x" << std::hex << address << '\n';
+            call_n16(address);
+            GBInterrupts::unset_interrupt(mem, interrupt);
+
+            break;
+        }
     }
 
     ticks = 20;

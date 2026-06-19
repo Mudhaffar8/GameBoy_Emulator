@@ -110,7 +110,7 @@ public:
         BgWindowTileDataArea = 0x10, // 0 = 8800-97FF (8800 method); 1 = 8000-8FFF (8000 method)
         WindowEnable = 0x20,
         WindowTileMap = 0x40, // 0 = 9800-9BFF; 1 = 9C00-9FFF
-        LCDPpuEnable = 0x80 // 0 = Off; 1 - On
+        LCDPpuEnable = 0x80 // 0 = Off; 1 - On (Not Implemented)
     };
 
     enum class LCDStatus : uint8_t
@@ -129,20 +129,20 @@ public:
     std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
 
     bool debug_mode = false;
-
+    
     /// @brief Advance PPU by a given number of cycles
     /// @param cycles Number of CPU cycles to advance.
     void tick(uint32_t cycles);
 
     /* OAM Scan */
-    void oam_scan(int screen_y);
+    void oam_scan(uint8_t screen_y);
 
     /* Rendering Methods */
     // Scanline Rendering
-    void render_scanline(int screen_y);
-    void render_bg_scanline(int screen_y);
-    void render_window_scanline(int screen_y);
-    void render_sprites_scanline(int screen_y);
+    void render_scanline(uint8_t screen_y);
+    void render_bg_scanline(uint8_t screen_y);
+    void render_window_scanline(uint8_t screen_y);
+    void render_sprites_scanline(uint8_t screen_y);
 
     // Frame Rendering
     void render_frame();
@@ -171,15 +171,20 @@ public:
     std::array<uint8_t, 4> get_palette(uint8_t palette);
 
     /* LCDC Methods */
-    inline void set_lcdc(LCDC lcdc_bit) { lcdc |= static_cast<uint8_t>(lcdc_bit); }
+    inline void set_lcdc(LCDC lcdc_bit, bool cond) 
+    { 
+        lcdc = (cond) ? 
+            (lcdc | static_cast<uint8_t>(lcdc_bit)) : 
+            (lcdc & ~static_cast<uint8_t>(lcdc_bit));
+    }
     inline bool check_lcdc(LCDC lcdc_bit) const { return (lcdc & static_cast<uint8_t>(lcdc_bit)) != 0; }
 
     /* LCD Status Methods */
     inline void set_lcd_status(LCDStatus lcd_status_bit, bool cond) 
     { 
-        lcd_status= (cond) ? 
-            (lcd_status | static_cast<uint8_t>(lcd_status)) : 
-            (lcd_status & ~static_cast<uint8_t>(lcd_status));
+        lcd_status = (cond) ? 
+            (lcd_status | static_cast<uint8_t>(lcd_status_bit)) : 
+            (lcd_status & ~static_cast<uint8_t>(lcd_status_bit));
     }
     inline bool check_lcd_status(LCDStatus lcd_status_bit) const { return (lcd_status & static_cast<uint8_t>(lcd_status_bit)) != 0; }
     
@@ -205,23 +210,22 @@ private:
     uint8_t& bg_palette;
     uint8_t& obj0_palette;
     uint8_t& obj1_palette;
+    uint8_t& bg_scroll_x;
+    uint8_t& bg_scroll_y;
+    uint8_t& window_scroll_x;
+    uint8_t& window_scroll_y;
+    uint8_t& scanline_y;
 
-    std::vector<GBSprite> oam_buffer;
+    std::vector<GBSprite> oam_buffer{};
 
     // Keep track of raw colour indices per scanline
     std::array<uint8_t, GBResolution::WIDTH> scanline_buffer{}; 
     
     Mode ppu_mode = Mode::OamScan;
 
-    uint8_t bg_scroll_x = 0;
-    uint8_t bg_scroll_y = 0;
-
-    uint8_t window_scroll_x = 7;
-    uint8_t window_scroll_y = 0;
-
-    int scanline_y = 0;
-
     uint32_t cycles_elapsed = 0;
+
+    uint8_t window_internal_scanline_y{};
 
     /* Mode Switching */
     void update_ppu_mode(Mode new_mode);
