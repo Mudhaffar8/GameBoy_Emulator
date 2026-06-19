@@ -17,9 +17,6 @@ This is a work-in-progress GameBoy emulator written in C++.
   - BP, OBP0, and OBP1 palettes
  
 ## Planned Updates
-- Fix Remaining PPU Bugs
-  - Fix bug with sprite vs. bg priority.
-  - Fix (potential) bug with window internal counter. 
 - Redo timer class.
 - Refactor MMU class and perform checks to prevent illegal reads/writes to memory.
 

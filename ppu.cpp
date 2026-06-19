@@ -110,6 +110,7 @@ void Ppu::update_ppu_mode(Mode new_mode)
         
     case Mode::VBlank:
         window_internal_scanline_y = 0;
+        
         GBInterrupts::request_interrupt(mmu, Interrupts::VBlank);
 
         if (check_lcd_status(LCDStatus::Mode1Select))
@@ -156,6 +157,8 @@ std::array<uint8_t, 4> Ppu::get_palette(uint8_t palette8)
 
 void Ppu::render_frame()
 {
+    window_internal_scanline_y = 0;
+
     for (int y = 0; y < GBResolution::HEIGHT; ++y) 
     {
         oam_scan(y);
@@ -442,6 +445,8 @@ void Ppu::render_bg_frame()
 
 void Ppu::render_window_frame()
 {
+    window_internal_scanline_y = 0;
+
     for (int y = 0; y < GBResolution::HEIGHT; ++y) 
         render_window_scanline(y);
 }
