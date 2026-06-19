@@ -113,8 +113,9 @@ void enable_disable_bg_test()
     ppu.set_lcdc(Ppu::LCDC::BgTileMapArea, true);
     ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
     
-    while (true)
+    while (display.is_program_running())
     {
+        display.handle_input();
         ppu.render_frame();
         display.update_screen();
         
@@ -154,8 +155,10 @@ void ppu_attempt()
     bool is_running = true;
 
     uint32_t cycles_elapsed = 0;
-    while (is_running)
+    while (display.is_program_running())
     {
+        display.handle_input();
+
         auto start = std::chrono::steady_clock::now();
         
         while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)

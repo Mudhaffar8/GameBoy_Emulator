@@ -1,6 +1,6 @@
-#include <stdexcept>
-
 #include "display.hpp"
+
+#include <stdexcept>
 #include <iostream>
 
 #include <SDL3/SDL_keyboard.h>
@@ -59,12 +59,14 @@ void Display::handle_input()
         switch (event.type)
         {
         case SDL_EVENT_QUIT:
+            is_running = false;
             break;
 
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
             {
             case SDL_SCANCODE_ESCAPE:
+                is_running = false;
                 break;
             }
             break;

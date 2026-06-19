@@ -28,7 +28,6 @@ public:
 
     /* Getters & Setters */
     inline bool is_program_running() { return is_running; }
-    inline void set_scale_factor(int scale_factor) { this->scale_factor = scale_factor; }
 
 private:
     Ppu& ppu;
@@ -40,5 +39,4 @@ private:
     SDL_Event event;
 
     bool is_running = true;
-    int scale_factor = 1;
 };

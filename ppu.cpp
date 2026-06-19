@@ -178,12 +178,9 @@ void Ppu::render_scanline(uint8_t screen_y)
         bool window_enable = check_lcdc(LCDC::WindowEnable);
         if (window_enable)
             render_window_scanline(screen_y);
-        
-        //std::cout << "\n";
     }
     else
     {
-        //std::cout << "BG LINE Y-" << screen_y << " NOT ENABLED!\n";
         std::fill(
             frame_buffer.begin() + (GBResolution::WIDTH * screen_y), 
             frame_buffer.begin() + (GBResolution::WIDTH * screen_y) + GBResolution::WIDTH,
@@ -232,15 +229,8 @@ void Ppu::render_window_scanline(uint8_t screen_y)
         window_scroll_x >= GBResolution::WIDTH
     ) return;
 
-    // Key Difference: Window Layer does not loop
-    int tile_map_y = static_cast<int>(screen_y) - window_scroll_y;
-
     int total_scroll_x = window_scroll_x - 7;
     int visible_tiles = (GBResolution::WIDTH - total_scroll_x) / GBTile::SIZE_PIXELS + 1; 
-    
-    // int tile_offset_x = total_scroll_x % GBTile::SIZE_PIXELS;
-
-    //std::cout << "Window Scanline #" << screen_y << '\n';
 
     bool use_9C00_tile_map = check_lcdc(LCDC::WindowTileMap);
 
@@ -324,22 +314,14 @@ void Ppu::oam_scan(uint8_t screen_y)
         oam_buffer.emplace_back(y_pos, x_pos, tile_num, attrib); 
     }
 
-    std::stable_sort(oam_buffer.begin(), oam_buffer.end(), 
-    [](const GBSprite& s1, const GBSprite& s2)
-    {
-        return s1.x_pos > s2.x_pos;
-    });
-
-    if (!oam_buffer.empty()) 
-    {
-        if (debug_mode)
+    std::stable_sort(
+        oam_buffer.begin(), 
+        oam_buffer.end(), 
+        [](const GBSprite& s1, const GBSprite& s2)
         {
-            std::cout << "# objs @ " << screen_y << ", OAM Size: " << oam_buffer.size() << std::endl;
-            
-            for (const GBSprite& sprite : oam_buffer)
-                std::cout << sprite << ", " << '\n';
+            return s1.x_pos >= s2.x_pos;
         }
-    }
+    );
 }
 
 std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map) const
@@ -355,16 +337,6 @@ std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, 
     uint16_t tile_address = check_lcdc(LCDC::BgWindowTileDataArea) ?
         TILE_DATA_ADDR0_START + (tile_id * GBTile::BYTES_PER_TILE) : 
         TILE_DATA_ADDR1_START + (static_cast<int8_t>(tile_id) * GBTile::BYTES_PER_TILE);
-
-    // if (scanline_y >= 136 && scanline_y < 144)
-    // {
-
-    //     bool bgwindowtiledatarea = check_lcdc(LCDC::BgWindowTileDataArea);
-    //     std::cout << "Tile Address " << std::hex << +tile_address 
-    //         << " Tile ID: " << std::dec << (bgwindowtiledatarea ? static_cast<int8_t>(tile_id) : tile_id) 
-    //         << " on Scanline Y " << scanline_y 
-    //         << " Tile Addressing Method " << (bgwindowtiledatarea ? "0x8000" : "0x8800") << ",\n";
-    // }
     
     // Points to correct row of tile
     uint16_t row_address = tile_address
@@ -410,12 +382,7 @@ std::array<uint8_t, 8> Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte)
 
 void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, std::array<uint8_t, 4>& palette)
 {
-    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) 
-    { 
-        if (debug_mode)
-            std::cout << "Screen out of range: " << screen_y << std::endl;
-        return; 
-    }
+    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
 
     // Starts from right pixel to left
     for (int i = 0; i < GBTile::SIZE_PIXELS; ++i)
@@ -439,12 +406,7 @@ void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int sc
 
 void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, const GBSprite& sprite, std::array<uint8_t, 4>& palette)
 {
-    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) 
-    { 
-        if (debug_mode)
-            std::cout << "Screen out of range: " << screen_y << std::endl; 
-        return; 
-    }
+    if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
 
     // Starts from right pixel to left
     for (int i = 0; i < GBTile::SIZE_PIXELS; ++i)
