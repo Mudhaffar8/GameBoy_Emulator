@@ -39,14 +39,14 @@ void sprite_palette_tests(uint8_t tile_num, uint8_t palette);
 /* Priority Tests */
 void priority_test();
 
-/* PPU Attempt */
-void ppu_attempt();
-
 /* Interrupt Test */
 void interrupt_test();
 
 /* Enable Test */
 void enable_disable_bg_test();
+
+/* For Testing ROMs */
+void rom_test();
 
 static Mmu mmu;
 static Cpu cpu(mmu);
@@ -97,8 +97,8 @@ int main(int argc, char** argv)
         priority_test();
     else if (argv[1] == std::string("ppu_speed_test"))
         ppu_speed_test();
-    else if (argv[1] == std::string("ppu_attempt")) 
-        ppu_attempt();
+    else if (argv[1] == std::string("rom_test")) 
+        rom_test();
     else if (argv[1] == std::string("interrupt_test"))
         interrupt_test();
     else if (argv[1] == std::string("enable_bg_test"))
@@ -149,9 +149,9 @@ void interrupt_test()
     SDL_Delay(3000);
 }
 
-void ppu_attempt()
+void rom_test()
 {
-    mmu.load_rom("./dmg-acid2.gb");
+    mmu.load_rom("./test_roms/02-interrupts.gb");
     bool is_running = true;
 
     uint32_t cycles_elapsed = 0;
@@ -165,7 +165,8 @@ void ppu_attempt()
         {
             uint32_t cycles = cpu.execute_instruction();
             ppu.tick(cycles);
-            
+            timer.tick(cycles);
+
             cycles_elapsed += cycles;
         }
 
@@ -176,7 +177,7 @@ void ppu_attempt()
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
 
-        uint16_t time = (diff < 16.67f) ? diff : 16.67f;
+        uint32_t time = (diff < 16.67f) ? diff : 16.67f;
         SDL_Delay(time);
     }
 }

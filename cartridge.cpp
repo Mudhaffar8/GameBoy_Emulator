@@ -24,7 +24,7 @@ bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
 
     for (int i = 0; i < NINTENDO_LOGO_LEN; ++i)
     {
-        if (nintendo_logo[i] != header.at(NINTENDO_LOGO_START + i))
+        if (nintendo_logo.at(i) != header.at(NINTENDO_LOGO_START + i))
             return false;
     }
 

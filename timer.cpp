@@ -12,45 +12,26 @@ Timer::Timer(Mmu& _mmu) :
 
 void Timer::tick(uint32_t cycles)
 {
-    /*
     div_counter += cycles;
-    div = (div_counter & 0xFF00) >> 8; // only upper 8 bits mapped to memory
-
-    bool tima_enable = (tac & 0b100) != 0; 
-    if (!tima_enable) return;
-
-    uint32_t clock_freq = clock_select_freq[tac & 0b11]; // find rate TIMA reg is incremented
-    uint16_t bit_n = div_counter & clock_freq;
-    */
-    div_counter += cycles;
-
-    if (div_counter >= 256) 
-    { 
-        ++div; 
-        div_counter %= 256;
-    }
+    div = (div_counter >> 8) & 0xFF;
 
     bool tima_enable = (tac & 0b100) != 0;
     uint32_t clock_freq = clock_select_freq[tac & 0b11];
 
     if (!tima_enable) return;
 
-    // Implementation may probably need to be fixed
-    for (int i = 0; i < cycles; ++i)
+    timer_counter += cycles;
+    if (timer_counter >= clock_freq)
     {
-        ++timer_counter;
-
-        if (timer_counter >= clock_freq)
+        timer_counter %= clock_freq;
+        
+        if (tima + 1 > 0xFF)
         {
-            if (tima == 0xFF)
-            {
-                tima = tma;
-                GBInterrupts::request_interrupt(mmu, Interrupts::Timer);
-            } 
-            else ++tima;
-
-            timer_counter %= clock_freq;
+            tima = tma;
+            GBInterrupts::request_interrupt(mmu, Interrupts::Timer);
         }
+        else
+            ++tima;
     }
 }
 
