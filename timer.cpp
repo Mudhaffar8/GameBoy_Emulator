@@ -4,10 +4,10 @@
 
 Timer::Timer(Mmu& _mmu) : 
     mmu(_mmu),
-    div(mmu.read_byte_ref(DIVIDER_REGISTER)),
-    tima(mmu.read_byte_ref(TIMER_COUNTER)),
-    tma(mmu.read_byte_ref(TIMER_MODULO)),
-    tac(mmu.read_byte_ref(TIMER_CONTROL))
+    div(mmu.read_io_reg(DIVIDER_REGISTER)),
+    tima(mmu.read_io_reg(TIMER_COUNTER)),
+    tma(mmu.read_io_reg(TIMER_MODULO)),
+    tac(mmu.read_io_reg(TIMER_CONTROL))
 {}
 
 void Timer::tick(uint32_t cycles)

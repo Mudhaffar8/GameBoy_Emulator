@@ -8,17 +8,17 @@
 
 Ppu::Ppu(Mmu& _mmu) :
     mmu(_mmu),
-    lcdc(mmu.read_byte_ref(LCD_CONTROL)),
-    lcd_status(mmu.read_byte_ref(LCD_STATUS)),
-    ly_compare(mmu.read_byte_ref(LY_COMPARE)),
-    bg_palette(mmu.read_byte_ref(BG_PALETTE)),
-    obj0_palette(mmu.read_byte_ref(OBJ_PALETTE_0)),
-    obj1_palette(mmu.read_byte_ref(OBJ_PALETTE_1)),
-    bg_scroll_x(mmu.read_byte_ref(VIEWPORT_X_POS)),
-    bg_scroll_y(mmu.read_byte_ref(VIEWPORT_Y_POS)),
-    window_scroll_x(mmu.read_byte_ref(WINDOW_X_POS)),
-    window_scroll_y(mmu.read_byte_ref(WINDOW_Y_POS)),
-    scanline_y(mmu.read_byte_ref(LCD_Y_COORDINATE))
+    lcdc(mmu.read_io_reg(LCD_CONTROL)),
+    lcd_status(mmu.read_io_reg(LCD_STATUS)),
+    ly_compare(mmu.read_io_reg(LY_COMPARE)),
+    bg_palette(mmu.read_io_reg(BG_PALETTE)),
+    obj0_palette(mmu.read_io_reg(OBJ_PALETTE_0)),
+    obj1_palette(mmu.read_io_reg(OBJ_PALETTE_1)),
+    bg_scroll_x(mmu.read_io_reg(VIEWPORT_X_POS)),
+    bg_scroll_y(mmu.read_io_reg(VIEWPORT_Y_POS)),
+    window_scroll_x(mmu.read_io_reg(WINDOW_X_POS)),
+    window_scroll_y(mmu.read_io_reg(WINDOW_Y_POS)),
+    scanline_y(mmu.read_io_reg(LCD_Y_COORDINATE))
 {
     oam_buffer.reserve(10);
 }

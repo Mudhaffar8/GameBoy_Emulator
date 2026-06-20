@@ -295,12 +295,6 @@ uint32_t Cpu::execute_instruction()
 
     ticks = 4;
 
-    // if (PC < 0x482E || PC > 0x4834 || PC-1 < 0x4837 || PC-2 > 0x4839)
-    // {
-    // std::cout << "Program Counter: " << std::hex << (PC - 1) << " Instruction: " << "0x" << std::hex << +IR << " ";
-    // print_flags();
-    // }
-
     switch (IR)
     {
     // NOP
@@ -575,17 +569,25 @@ uint32_t Cpu::execute_instruction()
     // INC [HL]
     // 12 T-cycles
     case 0x34:
-        inc_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            inc_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 12;
+            ticks = 12;
+        }
         break;
     
     // DEC [HL]
     // 12 T-cycles
     case 0x35:
-        dec_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            dec_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 12;
+            ticks = 12;
+        }
         break;
 
     // LD [HL], n8
@@ -792,9 +794,13 @@ uint32_t Cpu::execute_instruction()
     // ADC A, HL
     // 8 T-cycles
     case 0x8E:
-        adc_a(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            adc_a(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 8;
+            ticks = 8;
+        }
         break;
 
     // SUB A, r8
@@ -1291,6 +1297,7 @@ uint32_t Cpu::execute_instruction()
 
     default:
         std::cout << "Invalid Opcode: " << std::hex << +IR << '\n';
+        ticks = 0;
         break;
     }
 
@@ -1322,9 +1329,13 @@ void Cpu::cb_execute()
     // RLC [HL]
     // 16 T-cycles
     case 0x06:
-        rlc_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            rlc_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // RRC r8
@@ -1343,9 +1354,13 @@ void Cpu::cb_execute()
     // RRC [HL]
     // 16 T-cycles
     case 0x0E:
-        rrc_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            rrc_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // RL r8
@@ -1364,9 +1379,13 @@ void Cpu::cb_execute()
     // RL [HL]
     // 16 T-cycles
     case 0x16:
-        rl_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            rl_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // RR r8
@@ -1385,9 +1404,13 @@ void Cpu::cb_execute()
     // RR [HL]
     // 16 T-cycles
     case 0x1E:
-        rr_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            rr_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // SLA r8
@@ -1406,9 +1429,13 @@ void Cpu::cb_execute()
     // SLA [HL]
     // 16 T-cycles
     case 0x26:
-        sla_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            sla_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // SRA r8
@@ -1427,9 +1454,13 @@ void Cpu::cb_execute()
     // SRA [HL]
     // 16 T-cycles
     case 0x2E:
-        sra_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            sra_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // SWAP r8
@@ -1448,9 +1479,13 @@ void Cpu::cb_execute()
     // SWAP [HL]
     // 16 T-cycles
     case 0x36:
-        swap_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            swap_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     // SRL r8
@@ -1469,9 +1504,13 @@ void Cpu::cb_execute()
     // SRL [HL]
     // 16 T-cycles
     case 0x3E:
-        srl_r8(mem.read_byte_ref(HL.r16));
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            srl_r8(byte);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
     
     // Bit u3, r8
@@ -1498,9 +1537,13 @@ void Cpu::cb_execute()
     case 0x6E:
     case 0x76:
     case 0x7E:
-        bit_u3_r8(mem.read_byte_ref(HL.r16), u3);
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            bit_u3_r8(byte, u3);
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 12;
+            ticks = 12;
+        }
         break;
 
     // RES u3, r8
@@ -1527,9 +1570,13 @@ void Cpu::cb_execute()
     case 0xAE:
     case 0xB6:
     case 0xBE:
-        res_u3_r8(mem.read_byte_ref(HL.r16), u3);
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            res_u3_r8(byte, u3); 
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
     
     // SET u3, r8
@@ -1555,9 +1602,13 @@ void Cpu::cb_execute()
     case 0xEE:
     case 0xF6:
     case 0xFE:
-        set_u3_r8(mem.read_byte_ref(HL.r16), u3);
+        {
+            uint8_t byte = mem.read_byte(HL.r16);
+            set_u3_r8(byte, u3); 
+            mem.write_byte(byte, HL.r16);
 
-        ticks = 16;
+            ticks = 16;
+        }
         break;
 
     default:
@@ -1947,8 +1998,8 @@ inline void Cpu::daa()
 
 void Cpu::check_interrupts()
 {
-    uint8_t interrupt_check = mem.read_byte(INTERRUPT_ENABLE) 
-        & mem.read_byte(INTERRUPT_FLAG) 
+    uint8_t interrupt_check = mem.get_interrupt_enable() 
+        & mem.get_interrupt_flag()
         & 0x1F;
 
     if (interrupt_check != 0)

@@ -18,28 +18,19 @@ Mmu::Mmu()
         0x00,0x00,0x3E,0x3C,0x43,0x62,0x40,0x60,0x40,0x60,0x43,0x62,0x3E,0x3C,0x00,0x00, // Letter "C"
     };
 
+    constexpr uint16_t TILE_9C00_OFFSET = TILE_MAP_9C00_START - TILE_MAP_START;
 
-    std::copy(tileset_tiles.begin(), tileset_tiles.end(), memory.begin() + TILE_DATA_ADDR0_START);
+    std::copy(tileset_tiles.begin(), tileset_tiles.end(), tile_data.begin());
 
-    std::fill(memory.begin() + TILE_MAP_9800_START, memory.begin() + TILE_MAP_9800_END + 1, 0x03);
-    std::fill(memory.begin() + TILE_MAP_9C00_START, memory.begin() + TILE_MAP_9C00_END + 1, 0x01);
+    std::fill(tile_map.begin(), tile_map.begin() + TILE_9C00_OFFSET, 0x03);
+    std::fill(tile_map.begin() + TILE_9C00_OFFSET, tile_map.end(), 0x01);
 
-    memory[TILE_MAP_9C00_START + 8] = 0x04;
-    memory[TILE_MAP_9C00_START + 64] = 0x00; // Make tile Mario's face
+    tile_map.at(8) = 0x04;
+    tile_map.at(64) = 0x00; // Make tile Mario's face
 
-    memory[TILE_MAP_9800_START + 64] = 0x00; // Make tile Mario's face
-    memory[TILE_MAP_9800_START + 8] = 0x02; // Make 8th tile checkered pattern
-    memory[TILE_MAP_9800_START + 4] = 0x05; // Make 4th tile checkered pattern
-
-    // Print out Tile Map
-    // for (int i = 0; i < 32; ++i)
-    // {
-    //     for (int j = 0; j < 32; ++j)
-    //     {
-    //         std::cout << +memory[TILE_MAP_9C00_START + 32 * j + i] << ", ";
-    //     }
-    //     std::cout << '\n';
-    // }
+    tile_map.at(44) = 0x00; // Make tile Mario's face
+    tile_map.at(8) = 0x02; // Make 8th tile checkered pattern
+    tile_map.at(4) = 0x05; // Make 4th tile checkered pattern
 }
 
 bool Mmu::load_cartridge(Cartridge& cartridge)
@@ -58,18 +49,176 @@ bool Mmu::load_rom(const char* path)
     }
 
     size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
-    if (file_size > ROM_CODE_END + 1)
+    if (file_size > BANKS_SIZE)
     {
         std::cerr << "File size is too large" << std::endl;
         return false;
     }
 
-    std::array<uint8_t, MEMORY_SIZE> buffer{};
-
     file.seekg(0, std::ios::beg);
-    file.read(reinterpret_cast<char*>(buffer.data()), file_size);
-
-    std::copy(buffer.begin(), buffer.end(), memory.begin());
+    file.read(reinterpret_cast<char*>(rom_data.data()), rom_data.size());
 
     return true;
+}
+
+void Mmu::dma_transfer(uint8_t source)
+{
+    // Should I worry about DMA bus conflicts??
+    int source_address = (source << 8);
+    for (int i = 0; i < 0x10; ++i)
+    {
+        uint8_t byte = read_byte(OAM_START + i);
+        write_byte(byte, source_address + i);
+    }
+}
+
+/* Writing from memory */
+void Mmu::write_byte(uint8_t byte, int address)
+{
+    switch (address & 0xF000)
+    {
+    /* Bank Zero & Bank N */
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+    case 0x4000:
+    case 0x5000:
+    case 0x6000:
+    case 0x7000:
+        std::cout << "Illegal Write to ROM @ " << std::hex << address << '\n';
+        break;
+    
+    /* VRAM */
+    /* Tile Data*/
+    case 0x8000:
+        tile_data.at(address - 0x8000) = byte;
+        break;
+    
+    /* Tile Data or Tile Maps */
+    case 0x9000:
+        if (address <= TILE_DATA_END)
+            tile_data.at(address - 0x8000) = byte;
+        else
+            tile_map.at(address - TILE_MAP_START) = byte;
+        
+        break;
+    
+    /* Cartridge RAM */
+    case 0xA000:
+    case 0xB000:
+        cartridge_ram.at(address - 0xA000) = byte;
+        break;
+    
+    /* Work RAM */
+    case 0xC000:
+    case 0xD000:
+        work_ram.at(address - 0xC000) = byte;
+        break;
+    
+    /* Echo RAM */
+    case 0xE000:
+        work_ram.at(address - 0xE000) = byte;
+        break;
+    
+    case 0xF000:
+        if (address <= ECHO_RAM_END)
+            work_ram.at(address - 0xE000) = byte;
+        else if (address <= OAM_END)
+            oam_data.at(address - OAM_START) = byte;
+        else if (address <= UNUSABLE_END)
+            std::cout << "Illegal write to UNUSABLE @ " << std::hex << address << '\n';
+        else if (address <= IO_REGISTERS_END)
+            write_io_reg(byte, address);
+        else if (address <= HIGH_RAM_END)
+            high_ram.at(address - HIGH_RAM_START) = byte;
+        else 
+            interrupt_enable = byte;
+        
+        break;
+    }
+}
+
+void Mmu::write_io_reg(uint8_t byte, int address)
+{
+    if (address == DMA)
+    {
+        io_registers.at(DMA - IO_REGISTERS_START) = byte;
+        dma_transfer(byte);
+        return;
+    }
+
+    io_registers.at(address - IO_REGISTERS_START) = byte;
+}
+
+/* Reading from memory */
+uint8_t Mmu::read_byte(int address) 
+{ 
+    switch (address & 0xF000)
+    {
+    /* Bank Zero & Bank N */
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+    case 0x4000:
+    case 0x5000:
+    case 0x6000:
+    case 0x7000:
+        return rom_data.at(address);
+    
+    /* VRAM */
+    /* Tile Data*/
+    case 0x8000:
+        return tile_data.at(address - 0x8000);
+    
+    /* Tile Data or Tile Maps */
+    case 0x9000:
+        if (address <= TILE_DATA_END)
+            return tile_data.at(address - 0x8000);
+            
+        return tile_map.at(address - TILE_MAP_START);
+    
+    /* Cartridge RAM */
+    case 0xA000:
+    case 0xB000:
+        return cartridge_ram.at(address - 0xA000);
+    
+    /* Work RAM */
+    case 0xC000:
+    case 0xD000:
+        return work_ram.at(address - 0xC000);
+    
+    /* Echo RAM */
+    case 0xE000:
+        return work_ram.at(address - 0xE000);
+    
+    case 0xF000:
+        if (address <= ECHO_RAM_END)
+            return work_ram.at(address - 0xE000);
+        else if (address <= OAM_END)
+            return oam_data.at(address - OAM_START);
+        else if (address <= UNUSABLE_END)
+            std::cout << "Illegal Read to UNUSABLE @ " <<  std::hex << address << '\n';
+        else if (address <= IO_REGISTERS_END)
+            return read_io_reg(address);
+        else if (address <= HIGH_RAM_END)
+            return high_ram.at(address - HIGH_RAM_START);
+        else 
+            return interrupt_enable;
+    
+    default:
+        std::cout << "Unknown memory Address @ " << std::hex << address << '\n';
+        return 0;
+        break;
+    }
+}
+
+uint8_t& Mmu::read_io_reg(int address) 
+{ 
+    switch (address)
+    {
+    default:
+        return io_registers.at(address - IO_REGISTERS_START);
+    }
 }

@@ -152,7 +152,6 @@ void interrupt_test()
 void rom_test()
 {
     mmu.load_rom("./test_roms/02-interrupts.gb");
-    bool is_running = true;
 
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())

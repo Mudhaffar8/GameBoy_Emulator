@@ -77,7 +77,8 @@ private:
     std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    int curr_rom_bank{}, curr_ram_bank{};
+    int curr_rom_bank{};
+    int curr_ram_bank{};
 };
 
 
