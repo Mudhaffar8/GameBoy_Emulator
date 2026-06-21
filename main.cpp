@@ -12,6 +12,7 @@
 #include "memory.hpp"
 #include "ppu.hpp"
 #include "timer.hpp"
+#include "cartridge.hpp"
 
 /* Speed Tests */
 double cpu_speed_test();
@@ -47,6 +48,9 @@ void enable_disable_bg_test();
 
 /* For Testing ROMs */
 void rom_test();
+
+/* Cartridge Tests */
+void cartridge_test();
 
 static Mmu mmu;
 static Cpu cpu(mmu);
@@ -103,8 +107,19 @@ int main(int argc, char** argv)
         interrupt_test();
     else if (argv[1] == std::string("enable_bg_test"))
         enable_disable_bg_test();
+    else if (argv[1] == std::string("cartridge_test"))
+        cartridge_test();
         
     return 0;
+}
+
+void cartridge_test()
+{
+    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/01-special.gb");
+    if (!cartridge) 
+        return;
+
+    cartridge->print();
 }
 
 void enable_disable_bg_test()
@@ -151,7 +166,11 @@ void interrupt_test()
 
 void rom_test()
 {
-    mmu.load_rom("./test_roms/02-interrupts.gb");
+    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/dmg-acid2.gb");
+    if (!cartridge.has_value())
+        return;
+
+    mmu.load_cartridge(cartridge.value());
 
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
@@ -175,8 +194,9 @@ void rom_test()
 
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
-
+        
         uint32_t time = (diff < 16.67f) ? diff : 16.67f;
+
         SDL_Delay(time);
     }
 }

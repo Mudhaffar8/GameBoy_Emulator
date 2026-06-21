@@ -33,9 +33,9 @@ Mmu::Mmu()
     tile_map.at(4) = 0x05; // Make 4th tile checkered pattern
 }
 
-bool Mmu::load_cartridge(Cartridge& cartridge)
+void Mmu::load_cartridge(Cartridge& cartridge)
 {
-    return false;
+    std::copy(cartridge.rom.begin(), cartridge.rom.end(), rom_data.begin());
 }
 
 bool Mmu::load_rom(const char* path)
@@ -49,7 +49,7 @@ bool Mmu::load_rom(const char* path)
     }
 
     size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
-    if (file_size > BANKS_SIZE)
+    if (file_size > rom_data.size())
     {
         std::cerr << "File size is too large" << std::endl;
         return false;
@@ -65,7 +65,7 @@ void Mmu::dma_transfer(uint8_t source)
 {
     // Should I worry about DMA bus conflicts??
     int source_address = (source << 8);
-    for (int i = 0; i < 0x10; ++i)
+    for (int i = 0; i < 0x100; ++i)
     {
         uint8_t byte = read_byte(OAM_START + i);
         write_byte(byte, source_address + i);

@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <iostream>
+#include <optional>
 
 // TODO: Add namespaces
 
@@ -47,9 +49,10 @@ constexpr uint16_t HEADER_SIZE = 0x0150;
 class Cartridge
 {
 public:
-    Cartridge(size_t rom_size, size_t ram_size);
+    /// @todo Make this private.
+    Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_data);
     
-    enum CartridgeType 
+    enum Type : uint8_t
     {
         RomOnly = 0x00,
         MBC1 = 0x01,
@@ -64,7 +67,7 @@ public:
         MBC3 = 0x11
     };
 
-    enum RamSize
+    enum RamSize : uint8_t
     {
         NoRam = 0x00,
         Bank8K = 0x02,
@@ -72,17 +75,21 @@ public:
         Bank128K = 0x04,
         Bank64K = 0x05
     };
-    
-private:
+
     std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    int curr_rom_bank{};
-    int curr_ram_bank{};
+    static std::optional<Cartridge> load_rom(const char* path);
+
+    void print() 
+    {
+        std::cout << "Cartridge Type: " << +rom.at(CARTRIDGE_TYPE) << '\n'
+            << "ROM Size: " << rom.size() << '\n'
+            << "RAM Size: " << ram.size() << '\n';
+    }
+private:
+    static std::optional<Cartridge> get_cartridge(std::vector<uint8_t>& rom_data, size_t ram_size, uint8_t cartridge_type);
+
+    static size_t get_ram_size(uint8_t ram_size);
+    static size_t get_rom_size(uint8_t rom_size);
 };
-
-
-/// @brief Reads and validates the header of a Game Boy ROM file.
-/// @param path Path to the ROM file.
-/// @returns false if the file is not found or the format is invalid.
-bool read_header(const char* path);

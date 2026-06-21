@@ -2,14 +2,18 @@
 
 #include <fstream>
 #include <filesystem>
-#include <iostream>
 #include <exception>
 #include <array>
 
-Cartridge::Cartridge(size_t rom_size, size_t ram_size) : 
-    rom(rom_size), 
-    ram(ram_size)
-{}
+constexpr int ONE_KB = 1024;
+
+Cartridge::Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_data) :
+    rom(std::move(rom_data)),
+    ram(std::move(ram_data))
+{
+    // std::cout << "ROM Size: " << rom.size() << '\n';
+    // std::cout << "RAM Size: " << ram.size() << '\n';
+}
 
 bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
 {
@@ -22,7 +26,7 @@ bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
         0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
     };
 
-    for (int i = 0; i < NINTENDO_LOGO_LEN; ++i)
+    for (int i = 0; i < nintendo_logo.size(); ++i)
     {
         if (nintendo_logo.at(i) != header.at(NINTENDO_LOGO_START + i))
             return false;
@@ -34,7 +38,7 @@ bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
 bool perform_checksum(std::array<uint8_t, HEADER_SIZE>& header)
 {
     uint8_t checksum = 0;
-    for (uint16_t i = TITLE_START; i <= ROM_VERSION; ++i) 
+    for (uint16_t i = 0x134; i <= 0x14C; ++i) 
     {
         checksum -= header.at(i) - 1;
     }
@@ -42,56 +46,96 @@ bool perform_checksum(std::array<uint8_t, HEADER_SIZE>& header)
     return checksum == header.at(HEADER_CHECKSUM);
 }
 
-// Cartridge get_cartridge(int cartridge_type, size_t rom_size, size_t ram_size)
-// {
-//     switch (cartridge_type)
-//     {
-//         case CartridgeType::RomOnly:
-//             return Cartridge(rom_size, ram_size);
-//
-//         default:
-//             throw std::runtime_error("Unimplemented Cartridge Type");
-//             break;
-//     } 
-// }
-
 // Assume ROM only Cartridge for now
 // Will add support for MBCs soon enough
-bool read_header(const char* path)
+std::optional<Cartridge> Cartridge::load_rom(const char* path)
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::beg);
-
+    // Valide file path
+    std::ifstream file(path, std::ios::in | std::ios::binary);
     if (!file.is_open()) 
     {
         std::cerr << "File does not exist" << std::endl;
-        return false;
+        return std::nullopt;
     }
 
     size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
     if (file_size < HEADER_SIZE)
     {
         std::cerr << "File size is too small" << std::endl;
-        return false;
+        return std::nullopt;
     }
 
+    // Validate Header Data
     std::array<uint8_t, HEADER_SIZE> header{};
-
     file.read(reinterpret_cast<char*>(header.data()), header.size());
 
-	file.close();
-
-    // if (!nintendo_logo_check(header))
-    // {
-    //     std::cerr << "Failed Nintendo Logo Check" << std::endl;
-    //     return false;
-    // }
-
+    if (!nintendo_logo_check(header))
+    {
+        std::cerr << "Failed Nintendo Logo Check" << std::endl;
+        return std::nullopt;
+    }
+    // Check sum doesn't seem to work for some ROMs ;(
     // if (!perform_checksum(header))
     // {
     //     std::cerr << "Failed Check Sum" << std::endl;
-    //     return false;
+    //     return std::nullopt;
     // }
-    // size_t rom_size = 32 * (1 << header.at(ROM_SIZE));
+
+    // Construct Cartridge
+    uint8_t cartridge_type = header.at(CARTRIDGE_TYPE);
+
+    // Both in KBs
+    size_t rom_size = Cartridge::get_rom_size(header.at(ROM_SIZE));
+    size_t ram_size = Cartridge::get_ram_size(header.at(RAM_SIZE));
     
-    return true;
+    std::vector<uint8_t> rom_data(rom_size, 0);
+
+    file.seekg(0, std::ios::beg);
+    file.read(reinterpret_cast<char*>(rom_data.data()), rom_data.size());
+    file.close();
+
+    auto cartridge = Cartridge::get_cartridge(rom_data, ram_size, cartridge_type);
+
+    return cartridge;
+}
+
+std::optional<Cartridge> Cartridge::get_cartridge(std::vector<uint8_t>& rom_data, size_t ram_size, uint8_t cartridge_type)
+{
+    std::vector<uint8_t> ram_data(ram_size, 0);
+
+    switch (cartridge_type)
+    {
+        case Type::RomOnly:
+        case Type::MBC1: // Some ROM-only files have cartridge type set to MBC1?
+            return std::make_optional<Cartridge>(rom_data, ram_data);
+
+        default:
+            std::cout << "Unimplemented Cartridge Type: " << +cartridge_type << '\n';
+            return std::nullopt;
+    } 
+}
+
+size_t Cartridge::get_rom_size(uint8_t rom_size)
+{
+    return (32 * ONE_KB) * (1 << rom_size);
+}
+
+size_t Cartridge::get_ram_size(uint8_t ram_size)
+{
+    switch(ram_size)
+    {
+    case RamSize::NoRam:
+        return 0;
+    case RamSize::Bank8K:
+        return 8 * ONE_KB;
+    case RamSize::Bank128K:
+        return 128 * ONE_KB;
+    case RamSize::Bank32K:
+        return 32 * ONE_KB;
+    case RamSize::Bank64K:
+        return 64 * ONE_KB;
+    default:
+        std::cout << "Uknown RAM Size Type: " << +ram_size << '\n';
+        return 0;
+    }
 }

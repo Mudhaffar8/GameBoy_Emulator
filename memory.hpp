@@ -28,7 +28,7 @@ constexpr uint16_t BANK_SIZE = BANK_ZERO_END + 1;
 /* Bank N - Switchable ROM Bank */
 constexpr uint16_t BANK_N_START = 0x4000;
 constexpr uint16_t BANK_N_END = 0x7FFF;
-constexpr uint16_t BANKS_SIZE = BANK_N_END + 1;
+constexpr uint16_t TOTAL_ROM_SIZE = BANK_N_END + 1;
 
 /* RAM */
 /* VRAM */
@@ -140,18 +140,18 @@ public:
     uint8_t& read_io_reg(int address);
 
     /* Loading programs into memory */
-    bool load_cartridge(Cartridge& cartridge);
-    bool load_rom(const char* path); /// @note For Testing Purposes
+    void load_cartridge(Cartridge& cartridge);
+    bool load_rom(const char* path); 
 
     void dma_transfer(uint8_t source);
 
     inline uint8_t get_interrupt_enable() { return interrupt_enable; }
     inline uint8_t get_interrupt_flag() { return io_registers.at(INTERRUPT_FLAG - IO_REGISTERS_START); }
 private:
-    Cartridge* cartridge;
+    Cartridge* cartridge = nullptr;
 
     /* ROM code */
-    std::array<uint8_t, BANKS_SIZE> rom_data{};
+    std::array<uint8_t, TOTAL_ROM_SIZE> rom_data{};
 
     /* RAM */
     std::array<uint8_t, CARTRIDGE_RAM_SIZE> cartridge_ram{};

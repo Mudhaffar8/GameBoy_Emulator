@@ -8,6 +8,7 @@ This is a work-in-progress GameBoy emulator written in C++.
 - Cycle counting for all instructions complete
 - (Almost) all I/O registers memory-mapped.
 - Timer implemented and tested.
+- Support for ROM-Only Cartridges
 - All PPU features supported and tested with the [dmg-acid2](https://github.com/mattcurrie/dmg-acid2/tree/master) test rom:
   - Per-scanline rendering
   - Background, window, and sprite layers
@@ -17,9 +18,7 @@ This is a work-in-progress GameBoy emulator written in C++.
   - BP, OBP0, and OBP1 palettes
  
 ## Planned Updates
-- Refactor MMU class and perform checks to prevent illegal reads/writes to memory.
 - Add input handling.
-- Complete Cartridge class.
 - Run more test roms.
 
 ![PPU Test Image](./images/ppu_test.png)
