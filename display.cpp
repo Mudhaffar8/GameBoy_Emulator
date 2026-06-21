@@ -5,8 +5,9 @@
 
 #include <SDL3/SDL_keyboard.h>
 
-Display::Display(Ppu& _ppu) : 
-    ppu(_ppu)
+Display::Display(Ppu& _ppu, Joypad& _joypad) : 
+    ppu(_ppu),
+    joypad(_joypad)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) 
     {
@@ -61,17 +62,67 @@ void Display::handle_input()
         case SDL_EVENT_QUIT:
             is_running = false;
             break;
-
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
             {
             case SDL_SCANCODE_ESCAPE:
                 is_running = false;
                 break;
+            case SDL_SCANCODE_W:
+                joypad.set_key(GBJoypad::DPad::Up);
+                break;
+            case SDL_SCANCODE_S:
+                joypad.set_key(GBJoypad::DPad::Down);
+                break;
+            case SDL_SCANCODE_A:
+                joypad.set_key(GBJoypad::DPad::Left);
+                break;
+            case SDL_SCANCODE_D:
+                joypad.set_key(GBJoypad::DPad::Right);
+                break;
+            case SDL_SCANCODE_J:
+                joypad.set_key(GBJoypad::Buttons::B);
+                break;
+            case SDL_SCANCODE_K:
+                joypad.set_key(GBJoypad::Buttons::A);
+                break;     
+            case SDL_SCANCODE_RETURN:
+                joypad.set_key(GBJoypad::Buttons::Start);
+                break;
+            case SDL_SCANCODE_SPACE:
+                joypad.set_key(GBJoypad::Buttons::Select);
+                break;                   
             }
             break;
         
         case SDL_EVENT_KEY_UP:
+            switch(event.key.scancode)
+            {
+            case SDL_SCANCODE_W:
+                joypad.unset_key(GBJoypad::DPad::Up);
+                break;
+            case SDL_SCANCODE_S:
+                joypad.unset_key(GBJoypad::DPad::Down);
+                break;
+            case SDL_SCANCODE_A:
+                joypad.unset_key(GBJoypad::DPad::Left);
+                break; 
+            case SDL_SCANCODE_D:
+                joypad.unset_key(GBJoypad::DPad::Right);
+                break;
+            case SDL_SCANCODE_J:
+                joypad.unset_key(GBJoypad::Buttons::B);
+                break;
+            case SDL_SCANCODE_K:
+                joypad.unset_key(GBJoypad::Buttons::A);
+                break;     
+            case SDL_SCANCODE_RETURN:
+                joypad.unset_key(GBJoypad::Buttons::Start);
+                break;
+            case SDL_SCANCODE_SPACE:
+                joypad.unset_key(GBJoypad::Buttons::Select);
+                break;                   
+            }
             break;
         
         default:

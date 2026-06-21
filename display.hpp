@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include "ppu.hpp"
+#include "joypad.hpp"
 
 /// @brief SDL3 wrapper class for graphics and input handling.
 class Display
@@ -13,7 +14,7 @@ public:
     /// @brief Initializes SDL resources
     /// @param ppu Provides PPU frame buffer data.
     /// @throws `std::runtime_error` If any SDL resources fail to initialize.
-    Display(Ppu& ppu);
+    Display(Ppu& ppu, Joypad& joypad);
 
     /// @brief Frees all SDL resources.
     ~Display();
@@ -31,6 +32,7 @@ public:
 
 private:
     Ppu& ppu;
+    Joypad& joypad;
 
     /* SDL resources */
     SDL_Window* window;

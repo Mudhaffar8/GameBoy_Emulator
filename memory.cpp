@@ -38,29 +38,6 @@ void Mmu::load_cartridge(Cartridge& cartridge)
     std::copy(cartridge.rom.begin(), cartridge.rom.end(), rom_data.begin());
 }
 
-bool Mmu::load_rom(const char* path)
-{
-    std::ifstream file(path, std::ios::in | std::ios::binary);
-
-    if (!file.is_open()) 
-    {
-        std::cerr << "File does not exist" << std::endl;
-        return false;
-    }
-
-    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
-    if (file_size > rom_data.size())
-    {
-        std::cerr << "File size is too large" << std::endl;
-        return false;
-    }
-
-    file.seekg(0, std::ios::beg);
-    file.read(reinterpret_cast<char*>(rom_data.data()), rom_data.size());
-
-    return true;
-}
-
 void Mmu::dma_transfer(uint8_t source)
 {
     // Should I worry about DMA bus conflicts??
@@ -141,14 +118,23 @@ void Mmu::write_byte(uint8_t byte, int address)
 
 void Mmu::write_io_reg(uint8_t byte, int address)
 {
-    if (address == DMA)
+
+    switch(address)
     {
+    // Lower nibble is read-only
+    case JOYPAD_INPUT:
+        io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) = byte /* & 0x20 */;
+        break;
+
+    case DMA:
         io_registers.at(DMA - IO_REGISTERS_START) = byte;
         dma_transfer(byte);
-        return;
-    }
+        break;
 
-    io_registers.at(address - IO_REGISTERS_START) = byte;
+    default:
+        io_registers.at(address - IO_REGISTERS_START) = byte;
+        break;
+    }
 }
 
 /* Reading from memory */

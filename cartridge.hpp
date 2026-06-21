@@ -28,8 +28,7 @@ const uint16_t SGB_FLAG = 0x0146;
 
 const uint16_t CARTRIDGE_TYPE = 0x0147;
 
-// Find ROM size with: 32 KiB × (1 << <value>)
-const uint16_t ROM_SIZE = 0x0148; 
+const uint16_t ROM_SIZE = 0x0148; // Find ROM size with: 32 KiB × (1 << <value>)
 const uint16_t RAM_SIZE = 0x0149;
 
 const uint16_t DESTINATION_CODE = 0x014A;
@@ -63,8 +62,10 @@ public:
         RomRam = 0x08,
         RomRamBattery = 0x09,
         MBC3TimerBattery = 0x0F,
-        MBC3TimerRam_Battery = 0x10,
-        MBC3 = 0x11
+        MBC3TimerRamBattery = 0x10,
+        MBC3 = 0x11,
+        MBC5 = 0x19,
+        MBC5Ram = 0x1A
     };
 
     enum RamSize : uint8_t
@@ -79,7 +80,7 @@ public:
     std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    static std::optional<Cartridge> load_rom(const char* path);
+    static std::optional<Cartridge> load_rom(const std::string path);
 
     void print() 
     {
@@ -87,7 +88,8 @@ public:
             << "ROM Size: " << rom.size() << '\n'
             << "RAM Size: " << ram.size() << '\n';
     }
-private:
+    
+protected:
     static std::optional<Cartridge> get_cartridge(std::vector<uint8_t>& rom_data, size_t ram_size, uint8_t cartridge_type);
 
     static size_t get_ram_size(uint8_t ram_size);

@@ -13,6 +13,7 @@
 #include "ppu.hpp"
 #include "timer.hpp"
 #include "cartridge.hpp"
+#include "joypad.hpp"
 
 /* Speed Tests */
 double cpu_speed_test();
@@ -52,10 +53,14 @@ void rom_test();
 /* Cartridge Tests */
 void cartridge_test();
 
+/* Joypad Test */
+void joypad_test();
+
 static Mmu mmu;
 static Cpu cpu(mmu);
 static Ppu ppu(mmu);
-static Display display(ppu);
+static Joypad joypad(mmu);
+static Display display(ppu, joypad);
 static Timer timer(mmu);
 
 int main(int argc, char** argv)
@@ -109,8 +114,20 @@ int main(int argc, char** argv)
         enable_disable_bg_test();
     else if (argv[1] == std::string("cartridge_test"))
         cartridge_test();
+    else if (argv[1] == std::string("joypad_test"))
+        joypad_test();
         
     return 0;
+}
+
+void joypad_test()
+{
+    mmu.write_io_reg(0x3F, JOYPAD_INPUT);
+    while (display.is_program_running())
+    {
+        display.handle_input();
+        joypad.print();
+    }
 }
 
 void cartridge_test()
@@ -175,6 +192,7 @@ void rom_test()
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
+        mmu.write_io_reg(0x8F, JOYPAD_INPUT);
         display.handle_input();
 
         auto start = std::chrono::steady_clock::now();
@@ -196,7 +214,6 @@ void rom_test()
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
         uint32_t time = (diff < 16.67f) ? diff : 16.67f;
-
         SDL_Delay(time);
     }
 }

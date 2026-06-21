@@ -40,17 +40,17 @@ bool perform_checksum(std::array<uint8_t, HEADER_SIZE>& header)
     uint8_t checksum = 0;
     for (uint16_t i = 0x134; i <= 0x14C; ++i) 
     {
-        checksum -= header.at(i) - 1;
+        checksum = checksum - header.at(i) - 1;
     }
 
     return checksum == header.at(HEADER_CHECKSUM);
 }
 
-// Assume ROM only Cartridge for now
+// Assume ROM-only Cartridge for now
 // Will add support for MBCs soon enough
-std::optional<Cartridge> Cartridge::load_rom(const char* path)
+std::optional<Cartridge> Cartridge::load_rom(const std::string path)
 {
-    // Valide file path
+    // Validate file path
     std::ifstream file(path, std::ios::in | std::ios::binary);
     if (!file.is_open()) 
     {
@@ -74,12 +74,12 @@ std::optional<Cartridge> Cartridge::load_rom(const char* path)
         std::cerr << "Failed Nintendo Logo Check" << std::endl;
         return std::nullopt;
     }
-    // Check sum doesn't seem to work for some ROMs ;(
-    // if (!perform_checksum(header))
-    // {
-    //     std::cerr << "Failed Check Sum" << std::endl;
-    //     return std::nullopt;
-    // }
+    // nvm I just wrote it wrong
+    if (!perform_checksum(header))
+    {
+        std::cerr << "Failed Check Sum" << std::endl;
+        return std::nullopt;
+    }
 
     // Construct Cartridge
     uint8_t cartridge_type = header.at(CARTRIDGE_TYPE);
