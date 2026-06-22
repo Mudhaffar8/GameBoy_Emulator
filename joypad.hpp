@@ -4,6 +4,7 @@
 #include "interrupts.hpp"
 
 #include <iostream>
+#include <SDL3/SDL_keyboard.h>
 
 // GBDev.gg8.se
 // Bit 7 - Not used
@@ -36,6 +37,18 @@ namespace GBJoypad
     constexpr uint8_t SELECT_BUTTONS = 0x20;
 };
 
+namespace GBInput
+{
+    constexpr int DPAD_UP = SDL_SCANCODE_W;
+    constexpr int DPAD_DOWN = SDL_SCANCODE_S;
+    constexpr int DPAD_LEFT = SDL_SCANCODE_A;
+    constexpr int DPAD_RIGHT = SDL_SCANCODE_D;
+    constexpr int BUTTON_B = SDL_SCANCODE_J;
+    constexpr int BUTTON_A = SDL_SCANCODE_K;
+    constexpr int BUTTON_SELECT = SDL_SCANCODE_SPACE;
+    constexpr int BUTTON_START = SDL_SCANCODE_RETURN;
+}
+
 class Joypad
 {
 public:
@@ -50,8 +63,8 @@ public:
 
     void reset_input();
 
-    inline bool is_buttons_selected() { return (joypad_input & GBJoypad::SELECT_BUTTONS) == 0; }
-    inline bool is_dpad_selected()  { return (joypad_input & GBJoypad::SELECT_DPAD) == 0; }
+    inline bool is_buttons_selected() { return ((joypad_input & GBJoypad::SELECT_BUTTONS) == 0); }
+    inline bool is_dpad_selected()  { return ((joypad_input & GBJoypad::SELECT_DPAD) == 0); }
 
     void print()
     {

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <thread>
 
 Mmu::Mmu()
 {
@@ -125,9 +126,16 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     {
     // Lower nibble is read-only
     case JOYPAD_INPUT:
-        std::cout << "Write to Joypad: " << std::hex << +byte;
-        io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) |= byte;
-        std::cout << "; New Joypad Value: " << std::hex << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';;
+    {
+        std::cout << "Writing Value: " << std::hex << +byte << '\n';
+        //std::cout << "Initial Joypad Value: " << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
+        uint8_t& joypad_input = io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
+        joypad_input &= 0xF;
+        //std::cout << "Joypad After 0x0F: " << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
+        joypad_input |= (byte & 0xF0);
+        std::cout << "Final Joypad Value: " << std::hex << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
+        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
         break;
 
     case DMA:
@@ -194,7 +202,18 @@ uint8_t Mmu::read_byte(int address)
             return 0;
         }
         else if (address <= IO_REGISTERS_END)
-            return read_io_reg(address);
+        {
+            switch(address)
+            {
+                case JOYPAD_INPUT:
+                    // if ((JOYPAD_INPUT & 0x30) == 0x30)
+                    //     return 0x3F;
+                    // else 
+                        return io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
+                default:
+                    return io_registers.at(address - IO_REGISTERS_START);
+            } 
+        }
         else if (address <= HIGH_RAM_END)
             return high_ram.at(address - HIGH_RAM_START);
         else 

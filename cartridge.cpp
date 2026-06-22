@@ -93,8 +93,8 @@ std::optional<Cartridge> Cartridge::get_cartridge(std::vector<uint8_t>& rom_data
 
     switch (cartridge_type)
     {
+        // Some ROM-only test files have cartridge type set to MBC1?
         case Type::RomOnly:
-        case Type::MBC1: // Some ROM-only files have cartridge type set to MBC1?
             return std::make_optional<Cartridge>(rom_data, ram_data);
 
         default:

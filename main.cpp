@@ -61,8 +61,8 @@ static Mmu mmu;
 static Cpu cpu(mmu);
 static Ppu ppu(mmu);
 static Joypad joypad(mmu);
-static Display display(ppu, joypad);
 static Timer timer(mmu);
+static Display display(ppu);
 
 int main(int argc, char** argv)
 {
@@ -128,7 +128,7 @@ void joypad_test()
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
-        display.handle_input();
+        display.handle_events();
         joypad.print();
 
         auto start = std::chrono::steady_clock::now();
@@ -149,7 +149,7 @@ void joypad_test()
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
-        uint32_t time = (diff < 16.67f) ? diff : 16.67f;
+        uint32_t time = (diff < 16.67f) ? (16.67 - diff) : 16.67f;
         SDL_Delay(time);
     }
 }
@@ -171,7 +171,7 @@ void enable_disable_bg_test()
     
     while (display.is_program_running())
     {
-        display.handle_input();
+        display.handle_events();
         ppu.render_frame();
         display.update_screen();
         
@@ -213,7 +213,7 @@ void boot_rom_test(const std::string& rom_name)
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
-        display.handle_input();
+        display.handle_events();
 
         auto start = std::chrono::steady_clock::now();
         
@@ -233,8 +233,8 @@ void boot_rom_test(const std::string& rom_name)
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
-        uint32_t time = (diff < 16.67f) ? 16.67f : diff;
-        SDL_Delay(10);
+        uint32_t time = (diff < 16.67f) ? (16.67 - diff) : 16.67f;
+        SDL_Delay(time);
     }
 }
 
@@ -249,19 +249,66 @@ void rom_test(const std::string& rom_name)
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
-        display.handle_input();
-        joypad.print();
-
         auto start = std::chrono::steady_clock::now();
-        
+
+        display.handle_events();
+                
         while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
         {
+            // Input Handling should probably be here?
+            // Program writes 0x20, 0x10, and finally 0x30 to joypad register
+            // Joypad sees 0x30 before and after frame so no inputs are processed 
+            const bool* state = SDL_GetKeyboardState(NULL);
+
+            if (state[SDL_SCANCODE_W])
+                joypad.set_key(GBJoypad::DPad::Up);
+            else
+                joypad.unset_key(GBJoypad::DPad::Up);
+
+            if (state[SDL_SCANCODE_S]) 
+                joypad.set_key(GBJoypad::DPad::Down);
+            else 
+                joypad.unset_key(GBJoypad::DPad::Down);
+
+            if (state[SDL_SCANCODE_A])
+                joypad.set_key(GBJoypad::DPad::Left);
+            else 
+                joypad.unset_key(GBJoypad::DPad::Left);
+
+            if (state[SDL_SCANCODE_D])
+                joypad.set_key(GBJoypad::DPad::Right);
+            else
+                joypad.unset_key(GBJoypad::DPad::Right);
+
+            if (state[SDL_SCANCODE_J])
+                joypad.set_key(GBJoypad::Buttons::B);
+            else
+                joypad.unset_key(GBJoypad::Buttons::B);
+        
+            if (state[SDL_SCANCODE_K])
+                joypad.set_key(GBJoypad::Buttons::A);
+            else
+                joypad.unset_key(GBJoypad::Buttons::A);
+            
+            if (state[SDL_SCANCODE_SPACE])
+                joypad.set_key(GBJoypad::Buttons::Select);
+            else
+                joypad.unset_key(GBJoypad::Buttons::Select);
+    
+            if (state[SDL_SCANCODE_RETURN])
+                joypad.set_key(GBJoypad::Buttons::Start);
+            else
+                joypad.unset_key(GBJoypad::Buttons::Start);
+    
+
             uint32_t cycles = cpu.execute_instruction();
             ppu.tick(cycles);
             timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
+
+        std::cout << "-----------------------\n";
 
         cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
 
@@ -270,8 +317,10 @@ void rom_test(const std::string& rom_name)
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
-        uint32_t time = (diff < 16.67f) ? 16.67f : diff;
+        uint32_t time = (diff <= 16.67f) ? (16.67 - diff) : 0;
         SDL_Delay(time);
+
+        //std::cout << "Frame Elapsed!\n";
     }
 }
 

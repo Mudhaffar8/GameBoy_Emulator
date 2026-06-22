@@ -5,23 +5,22 @@
 #include <SDL3/SDL.h>
 
 #include "ppu.hpp"
-#include "joypad.hpp"
 
-/// @brief SDL3 wrapper class for graphics and input handling.
+
+/// @brief SDL3 wrapper class for window and graphics.
 class Display
 {
 public:
     /// @brief Initializes SDL resources
     /// @param ppu Provides PPU frame buffer data.
     /// @throws `std::runtime_error` If any SDL resources fail to initialize.
-    Display(Ppu& ppu, Joypad& joypad);
+    Display(Ppu& ppu);
 
     /// @brief Frees all SDL resources.
     ~Display();
 
-    /// @brief Polls SDL input events and updates input buffer.
-    /// @param buffer Input buffer to be updated.
-    void handle_input();
+    /// @brief Polls SDL events.
+    void handle_events();
 
     /// @brief Updates screen using PPU's current frame buffer.
     void update_screen();
@@ -32,7 +31,6 @@ public:
 
 private:
     Ppu& ppu;
-    Joypad& joypad;
 
     /* SDL resources */
     SDL_Window* window;
