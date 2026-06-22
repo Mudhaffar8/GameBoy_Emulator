@@ -141,15 +141,17 @@ public:
 
     /* Loading programs into memory */
     void load_cartridge(Cartridge& cartridge);
-    bool load_rom(const char* path); 
+    bool load_boot_rom(const std::string& path);
 
     void dma_transfer(uint8_t source);
 
+    /* Testing */
+    void load_test_tiles();
+
     inline uint8_t get_interrupt_enable() { return interrupt_enable; }
     inline uint8_t get_interrupt_flag() { return io_registers.at(INTERRUPT_FLAG - IO_REGISTERS_START); }
-private:
-    Cartridge* cartridge = nullptr;
 
+private:
     /* ROM code */
     std::array<uint8_t, TOTAL_ROM_SIZE> rom_data{};
 

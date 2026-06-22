@@ -6,31 +6,10 @@
 
 Mmu::Mmu()
 {
-    std::vector<uint8_t> tileset_tiles 
-    {
-        0xFC,0xFC,0xFE,0xFE,0xDC,0x24,0xDC,0x74,0xDC,0x74,0x3E,0xC2,0x82,0xFE,0xFE,0xFE, // Mario's face
-        0x00,0x00,0x3C,0x3C,0x7E,0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x7E,0x00,0x3C, // Number zero
-        0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC, // Checkered pattern
-        0x00,0x0F,0x00,0x0F,0x00,0x0F,0x00,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F, // Other Checkered Pattern
-        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, // Black Square
-        0xFF,0x00,0x7E,0xFF,0x85,0x81,0x89,0x83,0x93,0x85,0xA5,0x8B,0xC9,0x97,0x7E,0xFF, // Window Pokemon 
-        0x00,0x00,0x18,0x1C,0x3C,0x26,0x62,0x43,0x7E,0x7F,0x62,0x43,0x62,0x43,0x00,0x00, // Letter "A"
-        0x00,0x00,0x3E,0x3C,0x43,0x62,0x40,0x60,0x40,0x60,0x43,0x62,0x3E,0x3C,0x00,0x00, // Letter "C"
-    };
+    std::copy(nintendo_logo.begin(), nintendo_logo.end(), rom_data.begin() + NINTENDO_LOGO_START);
 
-    constexpr uint16_t TILE_9C00_OFFSET = TILE_MAP_9C00_START - TILE_MAP_START;
-
-    std::copy(tileset_tiles.begin(), tileset_tiles.end(), tile_data.begin());
-
-    std::fill(tile_map.begin(), tile_map.begin() + TILE_9C00_OFFSET, 0x03);
-    std::fill(tile_map.begin() + TILE_9C00_OFFSET, tile_map.end(), 0x01);
-
-    tile_map.at(8) = 0x04;
-    tile_map.at(64) = 0x00; // Make tile Mario's face
-
-    tile_map.at(44) = 0x00; // Make tile Mario's face
-    tile_map.at(8) = 0x02; // Make 8th tile checkered pattern
-    tile_map.at(4) = 0x05; // Make 4th tile checkered pattern
+    io_registers.at(DMA - IO_REGISTERS_START) = 0xFF;
+    io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) = 0x0F;
 }
 
 void Mmu::load_cartridge(Cartridge& cartridge)
@@ -38,14 +17,37 @@ void Mmu::load_cartridge(Cartridge& cartridge)
     std::copy(cartridge.rom.begin(), cartridge.rom.end(), rom_data.begin());
 }
 
+bool Mmu::load_boot_rom(const std::string& path)
+{
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+
+    if (!file.is_open()) 
+    {
+        std::cerr << "File does not exist" << std::endl;
+        return false;
+    }
+
+    size_t file_size = static_cast<size_t>(std::filesystem::file_size(path));
+    if (file_size > TOTAL_ROM_SIZE)
+    {
+        std::cerr << "File size is too large" << std::endl;
+        return false;
+    }
+
+    file.seekg(0, std::ios::beg);
+    file.read(reinterpret_cast<char*>(rom_data.data()), rom_data.size());
+
+    return true;
+}
+
 void Mmu::dma_transfer(uint8_t source)
 {
     // Should I worry about DMA bus conflicts??
-    int source_address = (source << 8);
-    for (int i = 0; i < 0x100; ++i)
+    uint16_t source_address = (source << 8);
+    for (int i = 0; i < 0xA0; ++i)
     {
-        uint8_t byte = read_byte(OAM_START + i);
-        write_byte(byte, source_address + i);
+        uint8_t byte = read_byte(source_address + i);
+        write_byte(byte, OAM_START + i);
     }
 }
 
@@ -123,7 +125,9 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     {
     // Lower nibble is read-only
     case JOYPAD_INPUT:
-        io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) = byte /* & 0x20 */;
+        std::cout << "Write to Joypad: " << std::hex << +byte;
+        io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) |= byte;
+        std::cout << "; New Joypad Value: " << std::hex << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';;
         break;
 
     case DMA:
@@ -185,7 +189,10 @@ uint8_t Mmu::read_byte(int address)
         else if (address <= OAM_END)
             return oam_data.at(address - OAM_START);
         else if (address <= UNUSABLE_END)
-            std::cout << "Illegal Read to UNUSABLE @ " <<  std::hex << address << '\n';
+        {
+            //std::cout << "Illegal Read to UNUSABLE @ " <<  std::hex << address << '\n';
+            return 0;
+        }
         else if (address <= IO_REGISTERS_END)
             return read_io_reg(address);
         else if (address <= HIGH_RAM_END)
@@ -196,15 +203,39 @@ uint8_t Mmu::read_byte(int address)
     default:
         std::cout << "Unknown memory Address @ " << std::hex << address << '\n';
         return 0;
-        break;
     }
 }
 
 uint8_t& Mmu::read_io_reg(int address) 
 { 
-    switch (address)
+    return io_registers.at(address - IO_REGISTERS_START);
+}
+
+void Mmu::load_test_tiles()
+{
+    std::vector<uint8_t> tileset_tiles 
     {
-    default:
-        return io_registers.at(address - IO_REGISTERS_START);
-    }
+        0xFC,0xFC,0xFE,0xFE,0xDC,0x24,0xDC,0x74,0xDC,0x74,0x3E,0xC2,0x82,0xFE,0xFE,0xFE, // Mario's face
+        0x00,0x00,0x3C,0x3C,0x7E,0x66,0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x7E,0x00,0x3C, // Number zero
+        0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC,0x55,0x33,0xAA,0xCC, // Checkered pattern
+        0x00,0x0F,0x00,0x0F,0x00,0x0F,0x00,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F,0xFF,0x0F, // Other Checkered Pattern
+        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, // Black Square
+        0xFF,0x00,0x7E,0xFF,0x85,0x81,0x89,0x83,0x93,0x85,0xA5,0x8B,0xC9,0x97,0x7E,0xFF, // Window Pokemon 
+        0x00,0x00,0x18,0x1C,0x3C,0x26,0x62,0x43,0x7E,0x7F,0x62,0x43,0x62,0x43,0x00,0x00, // Letter "A"
+        0x00,0x00,0x3E,0x3C,0x43,0x62,0x40,0x60,0x40,0x60,0x43,0x62,0x3E,0x3C,0x00,0x00, // Letter "C"
+    };
+
+    constexpr uint16_t TILE_9C00_OFFSET = TILE_MAP_9C00_START - TILE_MAP_START;
+
+    std::copy(tileset_tiles.begin(), tileset_tiles.end(), tile_data.begin());
+
+    std::fill(tile_map.begin(), tile_map.begin() + TILE_9C00_OFFSET, 0x03);
+    std::fill(tile_map.begin() + TILE_9C00_OFFSET, tile_map.end(), 0x01);
+
+    tile_map.at(8) = 0x04;
+    tile_map.at(64) = 0x00; // Make tile Mario's face
+
+    tile_map.at(44) = 0x00; // Make tile Mario's face
+    tile_map.at(8) = 0x02; // Make 8th tile checkered pattern
+    tile_map.at(4) = 0x05; // Make 4th tile checkered pattern
 }

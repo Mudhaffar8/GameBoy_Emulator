@@ -48,10 +48,11 @@ void interrupt_test();
 void enable_disable_bg_test();
 
 /* For Testing ROMs */
-void rom_test();
+void rom_test(const std::string& rom_name);
+void boot_rom_test(const std::string& rom_name);
 
 /* Cartridge Tests */
-void cartridge_test();
+void cartridge_test(const std::string& rom_name);
 
 /* Joypad Test */
 void joypad_test();
@@ -67,20 +68,20 @@ int main(int argc, char** argv)
 {
     int arg1 = std::atoi(argv[2]);
     int arg2 = std::atoi(argv[3]);
-    bool debug_mode_enabled = std::string(argv[4]) == "t";
+    std::string arg3 = std::string(argv[4]);
 
-    ppu.debug_mode = debug_mode_enabled;
+    ppu.debug_mode = arg3 == "t";
 
-    mmu.write_byte(0b11100100, BG_PALETTE);
-    mmu.write_byte(0b11100100, OBJ_PALETTE_0);
-    mmu.write_byte(0b11100100, OBJ_PALETTE_1);
+    // mmu.write_byte(0b11100100, BG_PALETTE);
+    // mmu.write_byte(0b11100100, OBJ_PALETTE_0);
+    // mmu.write_byte(0b11100100, OBJ_PALETTE_1);
     
     ppu.set_lcd_status(Ppu::LCDStatus::Unused, true);
 
     ppu.set_lcdc(Ppu::LCDC::LCDPpuEnable, true);
-    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
-    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
-    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+    // ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    // ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    // ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
 
     //std::cout << "Initialized before program starts ^\n";
     
@@ -107,32 +108,55 @@ int main(int argc, char** argv)
     else if (argv[1] == std::string("ppu_speed_test"))
         ppu_speed_test();
     else if (argv[1] == std::string("rom_test")) 
-        rom_test();
+        rom_test(arg3);
     else if (argv[1] == std::string("interrupt_test"))
         interrupt_test();
     else if (argv[1] == std::string("enable_bg_test"))
         enable_disable_bg_test();
     else if (argv[1] == std::string("cartridge_test"))
-        cartridge_test();
+        cartridge_test(arg3);
     else if (argv[1] == std::string("joypad_test"))
         joypad_test();
-        
+    else if (argv[1] == std::string("boot_rom_test"))
+        boot_rom_test(arg3);
+
     return 0;
 }
 
 void joypad_test()
 {
-    mmu.write_io_reg(0x3F, JOYPAD_INPUT);
+    uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
         display.handle_input();
         joypad.print();
+
+        auto start = std::chrono::steady_clock::now();
+        
+        while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
+        {
+            uint32_t cycles = cpu.execute_instruction();
+            ppu.tick(cycles);
+            timer.tick(cycles);
+
+            cycles_elapsed += cycles;
+        }
+
+        cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
+
+        display.update_screen();
+
+        auto end = std::chrono::steady_clock::now();
+        double diff = std::chrono::duration<double, std::milli>(end - start).count();
+        
+        uint32_t time = (diff < 16.67f) ? diff : 16.67f;
+        SDL_Delay(time);
     }
 }
 
-void cartridge_test()
+void cartridge_test(const std::string& rom_name)
 {
-    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/01-special.gb");
+    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
     if (!cartridge) 
         return;
 
@@ -181,18 +205,14 @@ void interrupt_test()
     SDL_Delay(3000);
 }
 
-void rom_test()
+void boot_rom_test(const std::string& rom_name)
 {
-    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/dmg-acid2.gb");
-    if (!cartridge.has_value())
-        return;
-
-    mmu.load_cartridge(cartridge.value());
+    cpu.get_pc() = 0x00;
+    mmu.load_boot_rom("./test_roms/" + rom_name);
 
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
-        mmu.write_io_reg(0x8F, JOYPAD_INPUT);
         display.handle_input();
 
         auto start = std::chrono::steady_clock::now();
@@ -213,7 +233,44 @@ void rom_test()
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
-        uint32_t time = (diff < 16.67f) ? diff : 16.67f;
+        uint32_t time = (diff < 16.67f) ? 16.67f : diff;
+        SDL_Delay(10);
+    }
+}
+
+void rom_test(const std::string& rom_name)
+{
+    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
+    if (!cartridge.has_value())
+        return;
+
+    mmu.load_cartridge(cartridge.value());
+    
+    uint32_t cycles_elapsed = 0;
+    while (display.is_program_running())
+    {
+        display.handle_input();
+        joypad.print();
+
+        auto start = std::chrono::steady_clock::now();
+        
+        while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
+        {
+            uint32_t cycles = cpu.execute_instruction();
+            ppu.tick(cycles);
+            timer.tick(cycles);
+
+            cycles_elapsed += cycles;
+        }
+
+        cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
+
+        display.update_screen();
+
+        auto end = std::chrono::steady_clock::now();
+        double diff = std::chrono::duration<double, std::milli>(end - start).count();
+        
+        uint32_t time = (diff < 16.67f) ? 16.67f : diff;
         SDL_Delay(time);
     }
 }

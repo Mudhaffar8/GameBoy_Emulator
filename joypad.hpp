@@ -50,13 +50,9 @@ public:
 
     void reset_input();
 
-    inline bool is_buttons_selected() { return (joypad_input & GBJoypad::SELECT_BUTTONS) != 0; }
-    inline bool is_dpad_selected()  { return (joypad_input & GBJoypad::SELECT_DPAD) != 0; }
+    inline bool is_buttons_selected() { return (joypad_input & GBJoypad::SELECT_BUTTONS) == 0; }
+    inline bool is_dpad_selected()  { return (joypad_input & GBJoypad::SELECT_DPAD) == 0; }
 
-    // Bit 3 - P13 Input Down  or Start    (0=Pressed) (Read Only)
-    // Bit 2 - P12 Input Up    or Select   (0=Pressed) (Read Only)
-    // Bit 1 - P11 Input Left  or Button B (0=Pressed) (Read Only)
-    // Bit 0 - P10 Input Right or Button A (0=Pressed) (Read Only)
     void print()
     {
         std::cout << "Buttons Selected: " << ((joypad_input & GBJoypad::SELECT_BUTTONS) != 0)

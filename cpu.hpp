@@ -10,6 +10,7 @@ constexpr uint16_t DMG_BC_INIT = 0x0013;
 constexpr uint16_t DMG_DE_INIT = 0x00D8;
 constexpr uint16_t DMG_HL_INIT = 0x014D;
 constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
+constexpr uint16_t PROGRAM_START = 0x100;
 
 /// @brief Represents a 16-bit register that can also be treated as two 8-bit values.
 /// @note Implementation assumes your system is little-endian. 
@@ -84,7 +85,7 @@ private:
     uint8_t& F = AF.low; // Flags
 
     // 16-bit Registers
-    uint16_t PC = 0x100; // Program Counter
+    uint16_t PC = PROGRAM_START; // Program Counter
     uint16_t SP = HIGH_RAM_END; // Stack Pointer
 
     /* Interrupt handling Register/variables */
