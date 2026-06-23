@@ -242,9 +242,9 @@ uint8_t Cartridge::mbc1_read(uint16_t address)
             uint16_t zero_bank_number = 0;
 
             if (total_rom_banks == 64) // Multi-Cart ROMS work differently (<< 4 instead)
-                zero_bank_number |= ((ram_bank_number & 1) << 5);
+                zero_bank_number = ((ram_bank_number & 1) << 5);
             else if (total_rom_banks == 128)
-                zero_bank_number |= ((ram_bank_number & 3) << 5);
+                zero_bank_number = ((ram_bank_number & 3) << 5);
 
             return rom.at(address + (0x4000 * zero_bank_number));
         }
