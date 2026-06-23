@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <iostream>
-#include <optional>
+#include <memory>
 #include <array>
 
 // TODO: Add namespaces
@@ -53,14 +53,15 @@ constexpr static std::array<uint8_t, NINTENDO_LOGO_LEN> nintendo_logo = {
     0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
 };
 
-/// @note Might need classes for different mappers.
+constexpr int ONE_KB = 1024;
+
 /// @brief Represents Game Boy cartridge with ROM data and optional RAM.
+/// Also supports MBC1.
 class Cartridge
 {
 public:
-    /// @todo Make this private.
     Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_data);
-    
+
     enum Type : uint8_t
     {
         RomOnly = 0x00,
@@ -87,21 +88,33 @@ public:
         Bank64K = 0x05
     };
 
-    std::vector<uint8_t> rom;
+    const std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    static std::optional<Cartridge> load_rom(const std::string path);
+    static std::unique_ptr<Cartridge> load_rom(const std::string path);
 
-    void print() 
-    {
-        std::cout << "Cartridge Type: " << +rom.at(CARTRIDGE_TYPE) << '\n'
-            << "ROM Size: " << rom.size() << '\n'
-            << "RAM Size: " << ram.size() << '\n';
-    }
+    uint8_t memory_read(uint16_t address);
+    void memory_write(uint8_t byte, uint16_t address);
+
+    void mbc1_write(uint8_t byte, uint16_t address);
+    uint8_t mbc1_read(uint16_t address);
+
+    /* Debugging */
+    void print();    
     
-protected:
-    static std::optional<Cartridge> get_cartridge(std::vector<uint8_t>& rom_data, size_t ram_size, uint8_t cartridge_type);
+private:
+    /* MBC1 Registers */
+    uint8_t rom_bank_number{}; // unsigned 5-bit number
+    uint8_t ram_bank_number{}; // unsigned 2-bit number
+ 
+    bool banking_mode = false;
+    bool external_ram_enable = false;
 
+    /* Helper Methods */
     static size_t get_ram_size(uint8_t ram_size);
     static size_t get_rom_size(uint8_t rom_size);
+
+    inline uint8_t get_size_kb(size_t size) { return size / ONE_KB; }
+    inline uint8_t get_num_rom_banks() { return rom.size() / (ONE_KB * 16); }
+    inline uint8_t get_num_ram_banks() { return ram.size() / (ONE_KB * 8); }
 };

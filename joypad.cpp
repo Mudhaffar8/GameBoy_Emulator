@@ -5,6 +5,52 @@ Joypad::Joypad(Mmu& _mmu) :
     joypad_input(mmu.read_io_reg(JOYPAD_INPUT))
 {}
 
+void Joypad::handle_inputs(const bool* state)
+{
+    if (!is_buttons_selected() && !is_dpad_selected())
+        return; 
+
+    if (state[SDL_SCANCODE_W])
+        set_key(GBJoypad::DPad::Up);
+    else
+        unset_key(GBJoypad::DPad::Up);
+
+    if (state[SDL_SCANCODE_S]) 
+        set_key(GBJoypad::DPad::Down);
+    else 
+        unset_key(GBJoypad::DPad::Down);
+
+    if (state[SDL_SCANCODE_A])
+        set_key(GBJoypad::DPad::Left);
+    else 
+        unset_key(GBJoypad::DPad::Left);
+
+    if (state[SDL_SCANCODE_D])
+        set_key(GBJoypad::DPad::Right);
+    else
+        unset_key(GBJoypad::DPad::Right);
+
+    if (state[SDL_SCANCODE_J])
+        set_key(GBJoypad::Buttons::B);
+    else
+        unset_key(GBJoypad::Buttons::B);
+
+    if (state[SDL_SCANCODE_K])
+        set_key(GBJoypad::Buttons::A);
+    else
+        unset_key(GBJoypad::Buttons::A);
+    
+    if (state[SDL_SCANCODE_SPACE])
+        set_key(GBJoypad::Buttons::Select);
+    else
+        unset_key(GBJoypad::Buttons::Select);
+
+    if (state[SDL_SCANCODE_RETURN])
+        set_key(GBJoypad::Buttons::Start);
+    else
+        unset_key(GBJoypad::Buttons::Start);
+}
+
 void Joypad::reset_input()
 {
     joypad_input |= (GBJoypad::DPad::Up |

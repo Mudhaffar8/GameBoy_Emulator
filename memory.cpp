@@ -7,15 +7,24 @@
 
 Mmu::Mmu()
 {
+    initialize_memory();
+}
+
+void Mmu::initialize_memory()
+{
     std::copy(nintendo_logo.begin(), nintendo_logo.end(), rom_data.begin() + NINTENDO_LOGO_START);
 
     io_registers.at(DMA - IO_REGISTERS_START) = 0xFF;
     io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) = 0x0F;
+
+    io_registers.at(LCD_STATUS - IO_REGISTERS_START) = 0x80;
+    io_registers.at(LCD_CONTROL - IO_REGISTERS_START) = 0x80;
 }
 
-void Mmu::load_cartridge(Cartridge& cartridge)
+void Mmu::load_cartridge(Cartridge* new_cartridge)
 {
-    std::copy(cartridge.rom.begin(), cartridge.rom.end(), rom_data.begin());
+    cartridge = new_cartridge;
+    std::copy(cartridge->rom.begin(), cartridge->rom.begin() + BANK_N_START, rom_data.begin());
 }
 
 bool Mmu::load_boot_rom(const std::string& path)
@@ -66,28 +75,20 @@ void Mmu::write_byte(uint8_t byte, int address)
     case 0x5000:
     case 0x6000:
     case 0x7000:
-        std::cout << "Illegal Write to ROM @ " << std::hex << address << '\n';
+        cartridge->memory_write(byte, address);
         break;
     
     /* VRAM */
     /* Tile Data*/
     case 0x8000:
-        tile_data.at(address - 0x8000) = byte;
-        break;
-    
-    /* Tile Data or Tile Maps */
     case 0x9000:
-        if (address <= TILE_DATA_END)
-            tile_data.at(address - 0x8000) = byte;
-        else
-            tile_map.at(address - TILE_MAP_START) = byte;
-        
+        vram.at(address - 0x8000) = byte;
         break;
     
     /* Cartridge RAM */
     case 0xA000:
     case 0xB000:
-        cartridge_ram.at(address - 0xA000) = byte;
+        cartridge->memory_write(byte, address);
         break;
     
     /* Work RAM */
@@ -126,16 +127,11 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     {
     // Lower nibble is read-only
     case JOYPAD_INPUT:
-    {
-        std::cout << "Writing Value: " << std::hex << +byte << '\n';
-        //std::cout << "Initial Joypad Value: " << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
-        uint8_t& joypad_input = io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
-        joypad_input &= 0xF;
-        //std::cout << "Joypad After 0x0F: " << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
-        joypad_input |= (byte & 0xF0);
-        std::cout << "Final Joypad Value: " << std::hex << +io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) << '\n';
-        //std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+        {
+            uint8_t& joypad_input = io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
+            joypad_input &= 0xF;
+            joypad_input |= (byte & 0xF0);
+        }
         break;
 
     case DMA:
@@ -163,24 +159,17 @@ uint8_t Mmu::read_byte(int address)
     case 0x5000:
     case 0x6000:
     case 0x7000:
-        return rom_data.at(address);
+        return cartridge->memory_read(address);
     
     /* VRAM */
-    /* Tile Data*/
     case 0x8000:
-        return tile_data.at(address - 0x8000);
-    
-    /* Tile Data or Tile Maps */
     case 0x9000:
-        if (address <= TILE_DATA_END)
-            return tile_data.at(address - 0x8000);
-            
-        return tile_map.at(address - TILE_MAP_START);
+        return vram.at(address - 0x8000);
     
     /* Cartridge RAM */
     case 0xA000:
     case 0xB000:
-        return cartridge_ram.at(address - 0xA000);
+        return cartridge->memory_read(address);
     
     /* Work RAM */
     case 0xC000:
@@ -206,9 +195,9 @@ uint8_t Mmu::read_byte(int address)
             switch(address)
             {
                 case JOYPAD_INPUT:
-                    // if ((JOYPAD_INPUT & 0x30) == 0x30)
-                    //     return 0x3F;
-                    // else 
+                    if ((JOYPAD_INPUT & 0x30) == 0x30)
+                        return 0x3F;
+                    else 
                         return io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
                 default:
                     return io_registers.at(address - IO_REGISTERS_START);
@@ -246,15 +235,15 @@ void Mmu::load_test_tiles()
 
     constexpr uint16_t TILE_9C00_OFFSET = TILE_MAP_9C00_START - TILE_MAP_START;
 
-    std::copy(tileset_tiles.begin(), tileset_tiles.end(), tile_data.begin());
+    std::copy(tileset_tiles.begin(), tileset_tiles.end(), vram.begin());
 
-    std::fill(tile_map.begin(), tile_map.begin() + TILE_9C00_OFFSET, 0x03);
-    std::fill(tile_map.begin() + TILE_9C00_OFFSET, tile_map.end(), 0x01);
+    std::fill(vram.begin(), vram.begin() + TILE_9C00_OFFSET, 0x03);
+    std::fill(vram.begin() + TILE_9C00_OFFSET, vram.end(), 0x01);
 
-    tile_map.at(8) = 0x04;
-    tile_map.at(64) = 0x00; // Make tile Mario's face
+    vram.at(8) = 0x04;
+    vram.at(64) = 0x00; // Make tile Mario's face
 
-    tile_map.at(44) = 0x00; // Make tile Mario's face
-    tile_map.at(8) = 0x02; // Make 8th tile checkered pattern
-    tile_map.at(4) = 0x05; // Make 4th tile checkered pattern
+    vram.at(44) = 0x00; // Make tile Mario's face
+    vram.at(8) = 0x02; // Make 8th tile checkered pattern
+    vram.at(4) = 0x05; // Make 4th tile checkered pattern
 }

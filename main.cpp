@@ -79,9 +79,9 @@ int main(int argc, char** argv)
     ppu.set_lcd_status(Ppu::LCDStatus::Unused, true);
 
     ppu.set_lcdc(Ppu::LCDC::LCDPpuEnable, true);
-    // ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
-    // ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
-    // ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
 
     //std::cout << "Initialized before program starts ^\n";
     
@@ -123,6 +123,9 @@ int main(int argc, char** argv)
     return 0;
 }
 
+void some()
+{}
+
 void joypad_test()
 {
     uint32_t cycles_elapsed = 0;
@@ -156,7 +159,7 @@ void joypad_test()
 
 void cartridge_test(const std::string& rom_name)
 {
-    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
+    std::unique_ptr<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
     if (!cartridge) 
         return;
 
@@ -240,11 +243,11 @@ void boot_rom_test(const std::string& rom_name)
 
 void rom_test(const std::string& rom_name)
 {
-    std::optional<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
-    if (!cartridge.has_value())
+    std::unique_ptr<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
+    if (!cartridge)
         return;
 
-    mmu.load_cartridge(cartridge.value());
+    mmu.load_cartridge(cartridge.get());
     
     uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
@@ -255,60 +258,15 @@ void rom_test(const std::string& rom_name)
                 
         while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
         {
-            // Input Handling should probably be here?
-            // Program writes 0x20, 0x10, and finally 0x30 to joypad register
-            // Joypad sees 0x30 before and after frame so no inputs are processed 
             const bool* state = SDL_GetKeyboardState(NULL);
-
-            if (state[SDL_SCANCODE_W])
-                joypad.set_key(GBJoypad::DPad::Up);
-            else
-                joypad.unset_key(GBJoypad::DPad::Up);
-
-            if (state[SDL_SCANCODE_S]) 
-                joypad.set_key(GBJoypad::DPad::Down);
-            else 
-                joypad.unset_key(GBJoypad::DPad::Down);
-
-            if (state[SDL_SCANCODE_A])
-                joypad.set_key(GBJoypad::DPad::Left);
-            else 
-                joypad.unset_key(GBJoypad::DPad::Left);
-
-            if (state[SDL_SCANCODE_D])
-                joypad.set_key(GBJoypad::DPad::Right);
-            else
-                joypad.unset_key(GBJoypad::DPad::Right);
-
-            if (state[SDL_SCANCODE_J])
-                joypad.set_key(GBJoypad::Buttons::B);
-            else
-                joypad.unset_key(GBJoypad::Buttons::B);
-        
-            if (state[SDL_SCANCODE_K])
-                joypad.set_key(GBJoypad::Buttons::A);
-            else
-                joypad.unset_key(GBJoypad::Buttons::A);
+            joypad.handle_inputs(state);
             
-            if (state[SDL_SCANCODE_SPACE])
-                joypad.set_key(GBJoypad::Buttons::Select);
-            else
-                joypad.unset_key(GBJoypad::Buttons::Select);
-    
-            if (state[SDL_SCANCODE_RETURN])
-                joypad.set_key(GBJoypad::Buttons::Start);
-            else
-                joypad.unset_key(GBJoypad::Buttons::Start);
-    
-
             uint32_t cycles = cpu.execute_instruction();
             ppu.tick(cycles);
             timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
-
-        std::cout << "-----------------------\n";
 
         cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
 

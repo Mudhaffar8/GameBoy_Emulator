@@ -54,7 +54,11 @@ class Joypad
 public:
     Joypad(Mmu& _mmu);
 
+
+
     /* Input Handling */
+    void handle_inputs(const bool* keyboard);
+    
     void set_key(GBJoypad::Buttons dpad_bit);
     void set_key(GBJoypad::DPad button_bit);
 

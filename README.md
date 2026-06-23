@@ -11,6 +11,7 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 
 ## Current Features
 - Full implementation of all 501 GameBoy opcodes, with all instructions (excpet for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. Passed all of Blaarg's "cpu instructions" test ROMS from `01-special.gb` to `11-op a,(hl).gb` (the `cpu_instrs.gb` file does not exactly work as I haven't implmeneted bank-switching yet).
+
 - Interrupt handling implemented and tested.
 - Timer implemented and tested.
 - Support for ROM-Only Cartridges
@@ -28,7 +29,8 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 - CMake compilation...
 - Run more test roms.
 
-![PPU Test Image](./images/ppu_test.png)
+![dmg-acid2 Test Result](./images/ppu_test.png)
+![Blargg's CPU Instructions Test Result](./images/passed_all_tests_wooooo.png)
 
 # Helpful Resources
 - [Pandocs](https://gbdev.io/pandocs/About.html)

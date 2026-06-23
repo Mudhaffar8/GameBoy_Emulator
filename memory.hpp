@@ -32,6 +32,10 @@ constexpr uint16_t TOTAL_ROM_SIZE = BANK_N_END + 1;
 
 /* RAM */
 /* VRAM */
+constexpr uint16_t VRAM_START = 0x8000; 
+constexpr uint16_t VRAM_END = 0x9FFF; 
+constexpr uint16_t VRAM_SIZE = (VRAM_END - VRAM_START) + 1; 
+
 constexpr uint16_t TILE_DATA_ADDR0_START = 0x8000; 
 constexpr uint16_t TILE_DATA_ADDR1_START = 0x9000;
 constexpr uint16_t TILE_DATA_END = 0x97FF;
@@ -131,6 +135,8 @@ class Mmu
 public:
     Mmu();
 
+    void initialize_memory();
+
     /* Writing to memory */
     void write_byte(uint8_t byte, int address);
     void write_io_reg(uint8_t byte, int address);
@@ -140,7 +146,7 @@ public:
     uint8_t& read_io_reg(int address);
 
     /* Loading programs into memory */
-    void load_cartridge(Cartridge& cartridge);
+    void load_cartridge(Cartridge* cartridge);
     bool load_boot_rom(const std::string& path);
 
     void dma_transfer(uint8_t source);
@@ -152,17 +158,17 @@ public:
     inline uint8_t get_interrupt_flag() { return io_registers.at(INTERRUPT_FLAG - IO_REGISTERS_START); }
 
 private:
+    Cartridge* cartridge = nullptr;
+
     /* ROM code */
     std::array<uint8_t, TOTAL_ROM_SIZE> rom_data{};
 
     /* RAM */
-    std::array<uint8_t, CARTRIDGE_RAM_SIZE> cartridge_ram{};
     std::array<uint8_t, WORK_RAM_SIZE> work_ram{};
     std::array<uint8_t, HIGH_RAM_SIZE> high_ram{};
 
     /* VRAM */
-    std::array<uint8_t, TILE_MAP_SIZE> tile_map{};
-    std::array<uint8_t, TILE_DATA_SIZE> tile_data{};
+    std::array<uint8_t, VRAM_SIZE> vram{};
     std::array<uint8_t, OAM_SIZE> oam_data{};
 
     /* IO Registers */
