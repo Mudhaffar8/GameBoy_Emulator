@@ -10,7 +10,7 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 - START: Enter
 
 ## Current Features
-- Full implementation of all 501 GameBoy opcodes, with all instructions (excpet for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. Passed all of Blaarg's "cpu instructions" test ROMS from `01-special.gb` to `11-op a,(hl).gb` (the `cpu_instrs.gb` file does not exactly work as I haven't implmeneted bank-switching yet).
+- Full implementation of all 501 GameBoy opcodes, with all instructions (excpet for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. Passed Blargg's `cpu_instrs.gb` test ROM.
 
 - Interrupt handling implemented and tested.
 - Timer implemented and tested.
@@ -29,10 +29,12 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 - CMake compilation...
 - Run more test roms.
 
-![dmg-acid2 Test Result](./images/ppu_test.png)
-![Blargg's CPU Instructions Test Result](./images/passed_all_tests_wooooo.png)
+# Showcase
+![Dr. Mario Start Screen](./images/dr_mario.png) ![Dr. Mario Gameplay](./images/dr_mario2.png) ![Dr. Mario Game Over](./images/dr_mario3.png)
 
-# Helpful Resources
+![dmg-acid2 Test Result](./images/dmg-acid2.png) ![Blargg's CPU Instructions Test Result](./images/passed_blargg.png)
+
+# Helpful Resources I Used
 - [Pandocs](https://gbdev.io/pandocs/About.html)
 - [Gameboy Opcode Table](https://gbdev.io/gb-opcodes/optables/)
 - [gbz80(7) - CPU Opcode Reference](https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7)

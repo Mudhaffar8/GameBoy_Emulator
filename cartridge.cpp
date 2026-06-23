@@ -128,7 +128,6 @@ void Cartridge::memory_write(uint8_t byte, uint16_t address)
     {
         // Some ROM-only test files have cartridge type set to MBC1?
         case Type::RomOnly:
-        // case Type::MBC1: // I need to swap this in and out whenever I run Blargg's Test ROMs
             if (ram.size() > 0 && address > 0x9FFF && address < 0xC000)
                 ram.at(address) = byte;
 

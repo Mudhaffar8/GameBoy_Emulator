@@ -163,7 +163,7 @@ void cartridge_test(const std::string& rom_name)
     if (!cartridge) 
         return;
 
-    cartridge->print();
+    //cartridge->print();
 }
 
 void enable_disable_bg_test()

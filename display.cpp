@@ -60,15 +60,16 @@ void Display::handle_events()
             is_running = false;
             break;
 
-        // case SDL_EVENT_WINDOW_RESIZED:
-        //     {
-        //         constexpr float ASPECT_RATIO = GBResolution::WIDTH / GBResolution::HEIGHT;
-        //         int window_width, window_height;
-        //         SDL_GetWindowSize(window, &window_width, &window_height);
-        //         int new_height = window_width / ASPECT_RATIO;
-        //         SDL_SetRenderLogicalPresentation(renderer, window_width, new_height, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
-        //     }
-        //     break;
+        case SDL_EVENT_WINDOW_RESIZED:
+            {
+                constexpr float ASPECT_RATIO = GBResolution::WIDTH / GBResolution::HEIGHT;
+                int window_width, window_height;
+                SDL_GetWindowSize(window, &window_width, &window_height);
+                std::cout << "Window Width: " << std::dec << window_width << " Window Height: " << window_height << '\n';
+                // int new_height = window_width / ASPECT_RATIO;
+                // SDL_SetRenderLogicalPresentation(renderer, window_width, new_height, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+            }
+            break;
 
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
