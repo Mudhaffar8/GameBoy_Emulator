@@ -14,9 +14,9 @@ Cartridge::Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_d
 
 void Cartridge::print() 
 {
-    std::cout << "Cartridge Type: " << +rom.at(CARTRIDGE_TYPE) << '\n'
-        << "ROM Size: " << rom.size() << " (Total ROM Banks: " << +get_num_rom_banks() << ")\n"
-        << "RAM Size: " << ram.size() << " (Total RAM Banks: " << +get_num_ram_banks() << ")\n";
+    std::cout << "Cartridge Type: " << std::hex << +rom.at(CARTRIDGE_TYPE) << '\n'
+        << "ROM Size: " << std::dec << rom.size() << " (Total ROM Banks: " << +get_num_rom_banks() << ")\n"
+        << "RAM Size: " << std::dec << ram.size() << " (Total RAM Banks: " << +get_num_ram_banks() << ")\n";
 }
 
 bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
@@ -128,13 +128,24 @@ void Cartridge::memory_write(uint8_t byte, uint16_t address)
     {
         // Some ROM-only test files have cartridge type set to MBC1?
         case Type::RomOnly:
+        case Type::RomRam:
+        case Type::RomRamBattery:
             if (ram.size() > 0 && address > 0x9FFF && address < 0xC000)
                 ram.at(address) = byte;
+            break;
 
         case Type::MBC1:
         case Type::MBC1Ram:
         case Type::MBC1RamBattery:
             mbc1_write(byte, address);
+            break;
+
+        case Type::MBC3:
+        case Type::MBC3TimerBattery:
+        case Type::MBC3TimerRamBattery:
+        case Type::MBC3Ram:
+        case Type::MBC3RamBattery:
+            mbc3_write(byte, address);
             break;
             
         default:
@@ -150,7 +161,8 @@ uint8_t Cartridge::memory_read(uint16_t address)
     {
         // Some ROM-only test files have cartridge type set to MBC1?
         case Type::RomOnly:
-        //case Type::MBC1:
+        case Type::RomRam:
+        case Type::RomRamBattery:
             if (ram.size() > 0 && address > 0x9FFF && address < 0xC000)
                 return ram.at(address);
 
@@ -160,7 +172,14 @@ uint8_t Cartridge::memory_read(uint16_t address)
         case Type::MBC1Ram:
         case Type::MBC1RamBattery:
             return mbc1_read(address);
-            
+
+        case Type::MBC3:
+        case Type::MBC3TimerBattery:
+        case Type::MBC3TimerRamBattery:
+        case Type::MBC3Ram:
+        case Type::MBC3RamBattery:
+            return mbc3_read(address);
+
         default:
             std::cout << "Unknown Cartridge Type: " << +cartridge_type << '\n';
             return 0x00;
@@ -184,12 +203,9 @@ void Cartridge::mbc1_write(uint8_t byte, uint16_t address)
     case 0x3000:
         {
             if (byte == 0) { rom_bank_number = 1; return; }
-            if (byte == 20) { rom_bank_number = 21; return; }
-            if (byte == 40) { rom_bank_number = 41; return; }
-            if (byte == 60) { rom_bank_number = 61; return; }
 
             uint8_t bitmask = std::min(0x1F, get_num_rom_banks() - 1);
-            rom_bank_number = (byte & bitmask & 0x1F);
+            rom_bank_number = (byte & bitmask);
         }
         break;
 
@@ -292,4 +308,128 @@ uint8_t Cartridge::mbc1_read(uint16_t address)
     }
 
     return 0x00;
+}
+
+void Cartridge::mbc3_write(uint8_t byte, uint16_t address)
+{
+    switch (address & 0xF000)
+    {
+        // Set External Ram Enable and RTC Registers
+    case 0x0000:
+    case 0x1000:
+        if ((byte & 0xF) == 0xA) 
+        {
+            external_ram_enable = true;
+            rtc_enable = true;
+        }
+        else 
+            external_ram_enable = false;
+        break;
+
+    case 0x2000:
+    case 0x3000:
+        rom_bank_number = (byte == 0) ? 1 : (byte & 0x7F);
+        //std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
+        break;
+    
+    case 0x4000:
+    case 0x5000:
+        if (byte <= 3)
+        {
+            ram_bank_number = byte;
+            is_rtc_mapped_to_ram = false;
+        }
+        else if (byte >= 0x8 && byte <= 0xC)
+        {
+            rtc_register_id = byte - 0x8;
+            is_rtc_mapped_to_ram = true;
+        }
+        break;
+    
+    // RTC Data Latch
+    case 0x6000:
+    case 0x7000:
+        break;
+    
+    case 0xA000:
+    case 0xB000:
+        // Writing to External RAM
+        if (!is_rtc_mapped_to_ram && external_ram_enable)
+            ram.at(0x2000 * ram_bank_number + (address - 0xA000)) = byte;
+        else
+            write_to_rtc_register(byte);
+        break;
+    }
+}
+
+uint8_t Cartridge::mbc3_read(uint16_t address)
+{
+    switch (address & 0xF000)
+    {
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+        return rom.at(address);
+        break;
+
+    case 0x4000:
+    case 0x5000:
+    case 0x6000:
+    case 0x7000:
+        return rom.at(0x4000 * rom_bank_number + (address - 0x4000));
+        break;
+
+    case 0xA000:
+    case 0xB000:
+        // Writing to External RAM
+        if (is_rtc_mapped_to_ram)
+            return read_to_rtc_register();
+        else
+        {   
+            if (external_ram_enable)
+                return ram.at(0x2000 * ram_bank_number + (address - 0xA000));
+            else
+                return 0xFF;
+        }
+    }
+
+    return 0;
+}
+
+uint8_t Cartridge::read_to_rtc_register()
+{
+    switch(rtc_register_id)
+    {
+    case 0: return rtc_s.latch | ~RTC_S_BITMASK;
+    case 1: return rtc_m.latch | ~RTC_M_BITMASK;
+    case 2: return rtc_h.latch | ~RTC_H_BITMASK;
+    case 3: return rtc_dl.latch;
+    case 4: return rtc_dh.latch | ~RTC_DH_BITMASK;
+    default: return 0xFF;
+    }
+}
+
+void Cartridge::write_to_rtc_register(uint8_t byte)
+{
+    switch(rtc_register_id)
+    {
+    case 0:
+        rtc_s.set_both(byte & RTC_S_BITMASK); 
+        break;
+    case 1:
+        rtc_m.set_both(byte & RTC_M_BITMASK); 
+        break;
+    case 2:
+        rtc_h.set_both(byte & RTC_H_BITMASK); 
+        break;
+    case 3:
+        rtc_dl.set_both(byte); 
+        break;
+    case 4:
+        rtc_dh.set_both(byte & RTC_DH_BITMASK);
+        break;
+    default:
+        break;
+    }
 }

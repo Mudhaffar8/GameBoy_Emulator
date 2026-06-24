@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <array>
+#include <variant>
 
 // TODO: Add namespaces
 
@@ -75,6 +76,8 @@ public:
         MBC3TimerBattery = 0x0F,
         MBC3TimerRamBattery = 0x10,
         MBC3 = 0x11,
+        MBC3Ram = 0x12,
+        MBC3RamBattery = 0x13,
         MBC5 = 0x19,
         MBC5Ram = 0x1A
     };
@@ -99,16 +102,50 @@ public:
     void mbc1_write(uint8_t byte, uint16_t address);
     uint8_t mbc1_read(uint16_t address);
 
+    void mbc3_write(uint8_t byte, uint16_t address);
+    uint8_t mbc3_read(uint16_t address);
+
     /* Debugging */
     void print();    
     
 private:
     /* MBC1 Registers */
-    uint8_t rom_bank_number{}; // unsigned 5-bit number
+    uint8_t rom_bank_number = 1; // unsigned 5-bit number
     uint8_t ram_bank_number{}; // unsigned 2-bit number
  
     bool banking_mode = false;
     bool external_ram_enable = false;
+
+    /* MBC3 Registers */
+    uint8_t rtc_register_id = 0;
+
+    bool rtc_enable = false;
+    bool is_rtc_mapped_to_ram = false;
+
+    struct RtcRegister
+    {
+        uint8_t reg8{};
+        uint8_t latch{};
+
+        void set_latch(uint8_t byte) { latch = byte; }
+        void set_both(uint8_t byte) { latch = byte, reg8 = byte; }
+    };
+
+    RtcRegister rtc_s; // 6-bit for counting seconds
+    RtcRegister rtc_m; // 6-bit for counting minutes
+    RtcRegister rtc_h; // 5-bit for counting hours
+    RtcRegister rtc_dl; // 8-bit for repr. lower 8-bits of total 9-bit day counter
+    RtcRegister rtc_dh; 
+
+    const uint8_t RTC_S_BITMASK = 0b00111111;
+    const uint8_t RTC_M_BITMASK = 0b00111111;
+    const uint8_t RTC_H_BITMASK = 0b00011111;
+    const uint8_t RTC_DH_BITMASK = 0b11000001;
+
+
+    // Use function pointers depending on MBC Type?
+    // int (*memory_read)(int);
+    // int (*memory_write)(int, int);
 
     /* Helper Methods */
     static size_t get_ram_size(uint8_t ram_size);
@@ -117,4 +154,8 @@ private:
     inline uint8_t get_size_kb(size_t size) { return size / ONE_KB; }
     inline uint8_t get_num_rom_banks() { return rom.size() / (ONE_KB * 16); }
     inline uint8_t get_num_ram_banks() { return ram.size() / (ONE_KB * 8); }
+
+    /* MBC3 Helper Methods */
+    void write_to_rtc_register(uint8_t byte);
+    uint8_t read_to_rtc_register();
 };

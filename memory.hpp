@@ -154,8 +154,8 @@ public:
     /* Testing */
     void load_test_tiles();
 
-    inline uint8_t get_interrupt_enable() { return interrupt_enable; }
-    inline uint8_t get_interrupt_flag() { return io_registers.at(INTERRUPT_FLAG - IO_REGISTERS_START); }
+    inline uint8_t& get_interrupt_enable() { return interrupt_enable; }
+    inline uint8_t& get_interrupt_flag() { return io_registers.at(INTERRUPT_FLAG - IO_REGISTERS_START); }
 
 private:
     Cartridge* cartridge = nullptr;

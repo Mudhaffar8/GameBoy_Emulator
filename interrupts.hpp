@@ -22,9 +22,15 @@ namespace GBInterrupts
         interrupt_flag |= static_cast<uint8_t>(interrupt);
     }
 
+    inline void disable_interrupt(Mmu& mem, Interrupts interrupt)
+    {
+        uint8_t& interrupt_enable = mem.get_interrupt_enable();
+        interrupt_enable &= ~static_cast<uint8_t>(interrupt);
+    }
+
     inline void unset_interrupt(Mmu& mem, Interrupts interrupt)
     {
-        uint8_t& interrupt_flag = mem.read_io_reg(INTERRUPT_FLAG);
+        uint8_t& interrupt_flag = mem.get_interrupt_flag();
         interrupt_flag &= ~static_cast<uint8_t>(interrupt);
     }
 

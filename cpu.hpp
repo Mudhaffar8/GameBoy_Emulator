@@ -52,6 +52,8 @@ public:
     RegPair& get_de() { return DE; }
     RegPair& get_hl() { return HL; }
 
+    uint8_t& get_ir() { return IR; }
+
     uint8_t& get_A() { return A; }
     uint8_t& get_F() { return F; }
 

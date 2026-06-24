@@ -168,8 +168,29 @@ void Ppu::render_frame()
 
 void Ppu::render_scanline(uint8_t screen_y)
 {
+    // https://www.reddit.com/r/Gameboy/comments/a1c8h0/comment/eap4f8c/
+    // When the LCD is off, the Game Boy treats it as a complete reset
+    // Scanline set to 0, enters mode 0 and LCD Clock set to 0
+    // https://www.reddit.com/r/EmuDev/comments/wn1096/super_mario_land_displays_brief_glitch_screen/
+    // SML2 and Mr. Do! both rely on this behaviour
+    // There seems to be a screen-tearing effect when I leave this code on 
+    // I'm either missing something or this needs to be placed somewhere else
     if (!check_lcdc(LCDC::LCDPpuEnable)) 
+    {
+        // set_scanline(0);
+        // window_internal_scanline_y = 0;
+
+        // set_lcd_status(LCDStatus::Coincidence, false);
+        
+        // ppu_mode = Mode::HBlank;
+        // lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(ppu_mode);
+        
+        // cycles_elapsed = 0;
+
+        // GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
+
         return;
+    }
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 

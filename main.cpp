@@ -79,9 +79,9 @@ int main(int argc, char** argv)
     ppu.set_lcd_status(Ppu::LCDStatus::Unused, true);
 
     ppu.set_lcdc(Ppu::LCDC::LCDPpuEnable, true);
-    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
-    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
-    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+    // ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    // ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    // ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
 
     //std::cout << "Initialized before program starts ^\n";
     
@@ -241,6 +241,7 @@ void boot_rom_test(const std::string& rom_name)
     }
 }
 
+
 void rom_test(const std::string& rom_name)
 {
     std::unique_ptr<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
@@ -250,6 +251,7 @@ void rom_test(const std::string& rom_name)
     mmu.load_cartridge(cartridge.get());
     
     uint32_t cycles_elapsed = 0;
+    uint64_t frames_elapsed = 0;
     while (display.is_program_running())
     {
         auto start = std::chrono::steady_clock::now();
@@ -262,8 +264,9 @@ void rom_test(const std::string& rom_name)
             joypad.handle_inputs(state);
             
             uint32_t cycles = cpu.execute_instruction();
+
             ppu.tick(cycles);
-            timer.tick(cycles);
+            //timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
@@ -279,6 +282,7 @@ void rom_test(const std::string& rom_name)
         SDL_Delay(time);
 
         //std::cout << "Frame Elapsed!\n";
+        ++frames_elapsed;
     }
 }
 

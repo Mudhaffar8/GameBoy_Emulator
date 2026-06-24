@@ -133,6 +133,9 @@ void Mmu::write_io_reg(uint8_t byte, int address)
             joypad_input |= (byte & 0xF0);
         }
         break;
+    
+    case LCD_Y_COORDINATE:
+        break;
 
     case DMA:
         io_registers.at(DMA - IO_REGISTERS_START) = byte;
