@@ -1,6 +1,6 @@
 ﻿# GameBoy Emulator
 
-This is a GameBoy emulator written in C++17 with SDL3 support for window rendering and input handling. It can only runs ROM-only cartridges but support for other cartridge types are on the timeline. There is no sound support for this emulator.
+This is a GameBoy emulator written in C++17 with SDL3 support for window rendering and input handling. 
 
 ## Controls
 - D-Pad: WASD
@@ -10,18 +10,15 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 - START: Enter
 
 ## Current Features
-- Full implementation of all 501 GameBoy opcodes, with all instructions (excpet for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. Passed Blargg's `cpu_instrs.gb` test ROM.
-
-- Interrupt handling implemented and tested.
-- Timer implemented and tested.
-- Support for ROM-Only Cartridges
+- Accurate implementation of all 501 GameBoy opcodes, passing Blargg's `cpu_instrs.gb` rom test and all instructions (except for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. 
 - All PPU features supported and tested with the [dmg-acid2](https://github.com/mattcurrie/dmg-acid2/tree/master) test rom:
- 
-## Planned Updates
-- Support for more cartridges:
+- Support for the following cartridge types with optional RAM:
+  - ROM-only
   - MBC1
-  - MBC3
-  - MBC5 (maybe...)
+  - MBC3 (RTC clock implementation still needs to be further tested and some features are missing)
+  - MBC5 (No Rumble support)
+
+## Planned Updates
 - GBC support.
 - Save states.
 - Controller Rebinding. 
