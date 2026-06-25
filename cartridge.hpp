@@ -79,7 +79,8 @@ public:
         MBC3Ram = 0x12,
         MBC3RamBattery = 0x13,
         MBC5 = 0x19,
-        MBC5Ram = 0x1A
+        MBC5Ram = 0x1A,
+        MBC5RamBattery = 0x1B
     };
 
     enum RamSize : uint8_t
@@ -105,13 +106,16 @@ public:
     void mbc3_write(uint8_t byte, uint16_t address);
     uint8_t mbc3_read(uint16_t address);
 
+    void mbc5_write(uint8_t byte, uint16_t address);
+    uint8_t mbc5_read(uint16_t address);
+
     /* Debugging */
     void print();    
     
 private:
     /* MBC1 Registers */
-    uint8_t rom_bank_number = 1; // unsigned 5-bit number
-    uint8_t ram_bank_number{}; // unsigned 2-bit number
+    uint16_t rom_bank_number = 1; // Making this 16-bit may cause problems
+    uint8_t ram_bank_number{}; // MBC1: unsigned 2-bit number, MBC5: 4-bit
  
     bool banking_mode = false;
     bool external_ram_enable = false;

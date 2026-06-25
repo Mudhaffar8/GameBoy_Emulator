@@ -3,4 +3,5 @@
 *.dll
 ./vs/*
 *.gb
+*.gbc
 *.bin

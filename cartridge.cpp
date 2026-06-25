@@ -15,8 +15,8 @@ Cartridge::Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_d
 void Cartridge::print() 
 {
     std::cout << "Cartridge Type: " << std::hex << +rom.at(CARTRIDGE_TYPE) << '\n'
-        << "ROM Size: " << std::dec << rom.size() << " (Total ROM Banks: " << +get_num_rom_banks() << ")\n"
-        << "RAM Size: " << std::dec << ram.size() << " (Total RAM Banks: " << +get_num_ram_banks() << ")\n";
+        << "ROM Size: " << std::dec << (rom.size() / ONE_KB) << "KB (Total ROM Banks: " << +get_num_rom_banks() << ")\n"
+        << "RAM Size: " << std::dec << (ram.size() / ONE_KB) << "KB (Total RAM Banks: " << +get_num_ram_banks() << ")\n";
 }
 
 bool nintendo_logo_check(std::array<uint8_t, HEADER_SIZE>& header)
@@ -147,7 +147,13 @@ void Cartridge::memory_write(uint8_t byte, uint16_t address)
         case Type::MBC3RamBattery:
             mbc3_write(byte, address);
             break;
-            
+        
+        case Type::MBC5:
+        case Type::MBC5Ram:
+        case Type::MBC5RamBattery:
+            mbc5_write(byte, address);
+            break;
+        
         default:
             std::cout << "Uknown Cartridge Type: " << +cartridge_type << '\n';
             break;
@@ -179,6 +185,11 @@ uint8_t Cartridge::memory_read(uint16_t address)
         case Type::MBC3Ram:
         case Type::MBC3RamBattery:
             return mbc3_read(address);
+
+        case Type::MBC5:
+        case Type::MBC5Ram:
+        case Type::MBC5RamBattery:
+            return mbc5_read(address);
 
         default:
             std::cout << "Unknown Cartridge Type: " << +cartridge_type << '\n';
@@ -329,7 +340,7 @@ void Cartridge::mbc3_write(uint8_t byte, uint16_t address)
     case 0x2000:
     case 0x3000:
         rom_bank_number = (byte == 0) ? 1 : (byte & 0x7F);
-        //std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
+        std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
         break;
     
     case 0x4000:
@@ -432,4 +443,74 @@ void Cartridge::write_to_rtc_register(uint8_t byte)
     default:
         break;
     }
+}
+
+void Cartridge::mbc5_write(uint8_t byte, uint16_t address)
+{
+switch (address & 0xF000)
+    {
+    case 0x0000:
+    case 0x1000:
+        if ((byte & 0xF) == 0xA) 
+            external_ram_enable = true;
+        else 
+            external_ram_enable = false;
+        break;
+
+    // Sets ROM Bank Number Low 8-bits
+    case 0x2000:
+        rom_bank_number &= 0x100;
+        rom_bank_number |= byte;
+        //std::cout << "ROM Bank Number: " << +rom_bank_number << '\n'; 
+        break;
+
+    // Sets ROM Bank Number high bit
+    case 0x3000:
+        rom_bank_number &= 0xFF;
+        rom_bank_number |= (byte & 1) << 8;
+        //std::cout << "ROM Bank Number: " << +rom_bank_number << '\n'; 
+        break;
+
+    // Set RAM Bank Number
+    case 0x4000:
+    case 0x5000:
+        ram_bank_number = (byte & 0xF);
+        //std::cout << "RAM Bank Number: " << +ram_bank_number << '\n'; 
+        break;
+    
+    case 0xA000:
+    case 0xB000:
+        // Writing to External RAM
+        if (external_ram_enable)
+            ram.at(0x2000 * ram_bank_number + (address - 0xA000)) = byte;
+
+        break;
+    }
+}
+
+uint8_t Cartridge::mbc5_read(uint16_t address)
+{
+    switch (address & 0xF000)
+    {
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+        return rom.at(address);
+
+    case 0x4000:
+    case 0x5000:
+    case 0x6000:
+    case 0x7000:
+        return rom.at(0x4000 * rom_bank_number + (address - 0x4000));
+
+    case 0xA000:
+    case 0xB000:
+        if (external_ram_enable)
+            return ram.at(0x2000 * ram_bank_number + (address - 0xA000));
+        else
+            return 0xFF;
+    }
+
+    return 0x00;
 }
