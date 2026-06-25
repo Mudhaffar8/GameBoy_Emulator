@@ -340,7 +340,7 @@ void Cartridge::mbc3_write(uint8_t byte, uint16_t address)
     case 0x2000:
     case 0x3000:
         rom_bank_number = (byte == 0) ? 1 : (byte & 0x7F);
-        std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
+        //std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
         break;
     
     case 0x4000:
@@ -474,8 +474,10 @@ switch (address & 0xF000)
     // Set RAM Bank Number
     case 0x4000:
     case 0x5000:
-        ram_bank_number = (byte & 0xF);
-        //std::cout << "RAM Bank Number: " << +ram_bank_number << '\n'; 
+        {
+            uint8_t bitmask = std::min(0xF, get_num_ram_banks() - 1);
+            ram_bank_number = (byte & bitmask);
+        }
         break;
     
     case 0xA000:

@@ -17,21 +17,15 @@
 // Bit 0 - P10 Input Right or Button A (0=Pressed) (Read Only)
 namespace GBJoypad
 {
-    enum Buttons 
-    {
-        A = 0x01,
-        B = 0x02,
-        Select = 0x04,
-        Start = 0x08
-    };
+    constexpr uint8_t BUTTON_A = 0x01;
+    constexpr uint8_t BUTTON_B = 0x02;
+    constexpr uint8_t BUTTON_SELECT = 0x04;
+    constexpr uint8_t BUTTON_START = 0x08;
 
-    enum DPad
-    {
-        Right = 0x01,
-        Left = 0x02,
-        Up = 0x04,
-        Down = 0x08
-    };
+    constexpr uint8_t DPAD_RIGHT = 0x01;
+    constexpr uint8_t DPAD_LEFT = 0x02;
+    constexpr uint8_t DPAD_UP = 0x04;
+    constexpr uint8_t DPAD_DOWN = 0x08;
 
     constexpr uint8_t SELECT_DPAD = 0x10;
     constexpr uint8_t SELECT_BUTTONS = 0x20;
@@ -54,16 +48,10 @@ class Joypad
 public:
     Joypad(Mmu& _mmu);
 
-
-
     /* Input Handling */
     void handle_inputs(const bool* keyboard);
     
-    void set_key(GBJoypad::Buttons dpad_bit);
-    void set_key(GBJoypad::DPad button_bit);
-
-    void unset_key(GBJoypad::Buttons button_bit);
-    void unset_key(GBJoypad::DPad dpad_bit);
+    void set_key(uint8_t input_bit, bool cond);
 
     void reset_input();
 
@@ -74,10 +62,10 @@ public:
     {
         std::cout << "Buttons Selected: " << ((joypad_input & GBJoypad::SELECT_BUTTONS) != 0)
             << ", D-Pad Selected: " << ((joypad_input & GBJoypad::SELECT_DPAD) != 0)
-            << ", Down/Start: " << ((joypad_input & GBJoypad::DPad::Down) != 0)
-            << ", Up/Select: " << ((joypad_input & GBJoypad::DPad::Up) != 0)
-            << ", Left/B: " << ((joypad_input & GBJoypad::DPad::Left) != 0)
-            << ", Right/A: " << ((joypad_input & GBJoypad::DPad::Right) != 0)
+            << ", Down/Start: " << ((joypad_input & GBJoypad::DPAD_DOWN) != 0)
+            << ", Up/Select: " << ((joypad_input & GBJoypad::DPAD_UP) != 0)
+            << ", Left/B: " << ((joypad_input & GBJoypad::DPAD_LEFT) != 0)
+            << ", Right/A: " << ((joypad_input & GBJoypad::DPAD_RIGHT) != 0)
             << '\n';
     }
 

@@ -160,10 +160,6 @@ void joypad_test()
 void cartridge_test(const std::string& rom_name)
 {
     std::unique_ptr<Cartridge> cartridge = Cartridge::load_rom("./test_roms/" + rom_name);
-    if (!cartridge) 
-        return;
-
-    //cartridge->print();
 }
 
 void enable_disable_bg_test()
@@ -266,7 +262,7 @@ void rom_test(const std::string& rom_name)
             uint32_t cycles = cpu.execute_instruction();
 
             ppu.tick(cycles);
-            //timer.tick(cycles);
+            timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
