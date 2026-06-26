@@ -295,6 +295,8 @@ uint32_t Cpu::execute_instruction()
 
     ticks = 4;
 
+    //std::cout << "Program Counter: " << std::hex << (PC - 1) << " Instruction: " << std::hex << +IR << '\n';
+
     switch (IR)
     {
     // NOP

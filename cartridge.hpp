@@ -23,6 +23,11 @@ const uint16_t TITLE_END = 0x0143;
 const uint16_t MANUFACTURER_CODE_START = 0x013F;
 const uint16_t MANUFACTURER_CODE_END = 0x0142;
 
+// 0x80 = CGB but backwards Compatible w/ gameboys
+// 0xC0 = Works on CGB Mode only
+// Otherwise, DMG Mode only
+const uint16_t CGB_FLAG = 0x0143;
+
 const uint16_t NEW_LICENSEE_CODE_START = 0x0144;
 const uint16_t NEW_LICENSEE_CODE_END = 0x0145;
 
@@ -63,6 +68,8 @@ class Cartridge
 public:
     Cartridge(std::vector<uint8_t>& rom_data, std::vector<uint8_t>& ram_data);
 
+    static std::unique_ptr<Cartridge> load_rom(const std::string path);
+
     enum Type : uint8_t
     {
         RomOnly = 0x00,
@@ -95,23 +102,19 @@ public:
     const std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    static std::unique_ptr<Cartridge> load_rom(const std::string path);
-
     uint8_t memory_read(uint16_t address);
-    void memory_write(uint8_t byte, uint16_t address);
-
-    void mbc1_write(uint8_t byte, uint16_t address);
     uint8_t mbc1_read(uint16_t address);
-
-    void mbc3_write(uint8_t byte, uint16_t address);
     uint8_t mbc3_read(uint16_t address);
-
-    void mbc5_write(uint8_t byte, uint16_t address);
     uint8_t mbc5_read(uint16_t address);
+
+    void memory_write(uint8_t byte, uint16_t address);
+    void mbc1_write(uint8_t byte, uint16_t address);
+    void mbc3_write(uint8_t byte, uint16_t address);
+    void mbc5_write(uint8_t byte, uint16_t address);
 
     /* Debugging */
     void print();    
-    
+
 private:
     /* MBC1 Registers */
     uint16_t rom_bank_number = 1; // Making this 16-bit may cause problems

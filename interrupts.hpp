@@ -18,7 +18,7 @@ namespace GBInterrupts
 {
     inline void request_interrupt(Mmu& mem, Interrupts interrupt)
     {
-        uint8_t& interrupt_flag = mem.read_io_reg(INTERRUPT_FLAG);
+        uint8_t& interrupt_flag = mem.get_interrupt_flag();
         interrupt_flag |= static_cast<uint8_t>(interrupt);
     }
 

@@ -57,6 +57,10 @@ void cartridge_test(const std::string& rom_name);
 /* Joypad Test */
 void joypad_test();
 
+void rgb55_to_hex(uint8_t hi_byte, uint8_t lo_byte);
+
+void cgb_obj_test();
+
 static Mmu mmu;
 static Cpu cpu(mmu);
 static Ppu ppu(mmu);
@@ -79,9 +83,9 @@ int main(int argc, char** argv)
     ppu.set_lcd_status(Ppu::LCDStatus::Unused, true);
 
     ppu.set_lcdc(Ppu::LCDC::LCDPpuEnable, true);
-    // ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
-    // ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
-    // ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowEnable, true);
+    ppu.set_lcdc(Ppu::LCDC::BgWindowTileDataArea, true);
+    ppu.set_lcdc(Ppu::LCDC::WindowTileMap, true);
 
     //std::cout << "Initialized before program starts ^\n";
     
@@ -119,41 +123,34 @@ int main(int argc, char** argv)
         joypad_test();
     else if (argv[1] == std::string("boot_rom_test"))
         boot_rom_test(arg3);
+    else if (argv[1] == std::string("color_test"))
+        rgb55_to_hex(arg1, arg2);
+    else
+        cgb_obj_test();
 
     return 0;
 }
 
-void some()
-{}
+void cgb_obj_test()
+{
+    
+}
+
+void rgb55_to_hex(uint8_t hi_byte, uint8_t lo_byte)
+{
+    std::cout << "RGB555 Colour: " << std::hex << +((hi_byte << 8) | lo_byte) << '\n';
+    std::cout << "RGBA Colour: " << std::hex << +ppu.convert_rgb555_to_rgba32(hi_byte, lo_byte) << '\n';
+}
 
 void joypad_test()
 {
-    uint32_t cycles_elapsed = 0;
     while (display.is_program_running())
     {
         display.handle_events();
+        joypad.handle_inputs(SDL_GetKeyboardState(0));
         joypad.print();
 
-        auto start = std::chrono::steady_clock::now();
-        
-        while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
-        {
-            uint32_t cycles = cpu.execute_instruction();
-            ppu.tick(cycles);
-            timer.tick(cycles);
-
-            cycles_elapsed += cycles;
-        }
-
-        cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
-
         display.update_screen();
-
-        auto end = std::chrono::steady_clock::now();
-        double diff = std::chrono::duration<double, std::milli>(end - start).count();
-        
-        uint32_t time = (diff < 16.67f) ? (16.67 - diff) : 16.67f;
-        SDL_Delay(time);
     }
 }
 
@@ -266,7 +263,7 @@ void rom_test(const std::string& rom_name)
             uint32_t cycles = cpu.execute_instruction();
 
             ppu.tick(cycles);
-            //timer.tick(cycles);
+            timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
@@ -284,6 +281,10 @@ void rom_test(const std::string& rom_name)
         //std::cout << "Frame Elapsed!\n";
         ++frames_elapsed;
     }
+
+    mmu.print_bg_cram();
+    std::cout << "---------------------\n";
+    mmu.print_obj_cram();
 }
 
 // Both Window, BG drawing On top of each other

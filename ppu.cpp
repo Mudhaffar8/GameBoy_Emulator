@@ -8,17 +8,17 @@
 
 Ppu::Ppu(Mmu& _mmu) :
     mmu(_mmu),
-    lcdc(mmu.read_io_reg(LCD_CONTROL)),
-    lcd_status(mmu.read_io_reg(LCD_STATUS)),
-    ly_compare(mmu.read_io_reg(LY_COMPARE)),
-    bg_palette(mmu.read_io_reg(BG_PALETTE)),
-    obj0_palette(mmu.read_io_reg(OBJ_PALETTE_0)),
-    obj1_palette(mmu.read_io_reg(OBJ_PALETTE_1)),
-    bg_scroll_x(mmu.read_io_reg(VIEWPORT_X_POS)),
-    bg_scroll_y(mmu.read_io_reg(VIEWPORT_Y_POS)),
-    window_scroll_x(mmu.read_io_reg(WINDOW_X_POS)),
-    window_scroll_y(mmu.read_io_reg(WINDOW_Y_POS)),
-    scanline_y(mmu.read_io_reg(LCD_Y_COORDINATE))
+    lcdc(mmu.get_io_reg(LCD_CONTROL)),
+    lcd_status(mmu.get_io_reg(LCD_STATUS)),
+    ly_compare(mmu.get_io_reg(LY_COMPARE)),
+    bg_palette(mmu.get_io_reg(BG_PALETTE)),
+    obj0_palette(mmu.get_io_reg(OBJ_PALETTE_0)),
+    obj1_palette(mmu.get_io_reg(OBJ_PALETTE_1)),
+    bg_scroll_x(mmu.get_io_reg(VIEWPORT_X_POS)),
+    bg_scroll_y(mmu.get_io_reg(VIEWPORT_Y_POS)),
+    window_scroll_x(mmu.get_io_reg(WINDOW_X_POS)),
+    window_scroll_y(mmu.get_io_reg(WINDOW_Y_POS)),
+    scanline_y(mmu.get_io_reg(LCD_Y_COORDINATE))
 {
     oam_buffer.reserve(10);
 }
@@ -128,32 +128,6 @@ void Ppu::update_ppu_mode(Mode new_mode)
         break;
     }
 }
- 
-/// @brief Converts the 2BPP colour value into 32-bit RGBA.
-/// @param bit2 
-/// @returns a 32-bit RGBA colour value.
-/// @throws index out of bounds exception if bit2 > 3.
-uint32_t Ppu::get_tile_colour(uint8_t bit2) const
-{
-    static constexpr std::array<uint32_t, 4> palette 
-    {
-        GBColours::COLOUR_00,
-        GBColours::COLOUR_01,
-        GBColours::COLOUR_10,
-        GBColours::COLOUR_11
-    };
-    return palette.at(bit2);    
-}
-
-std::array<uint8_t, 4> Ppu::get_palette(uint8_t palette8)
-{
-    std::array<uint8_t, 4> palette{};
-    for (int i = 0; i < 4; ++i)
-        palette.at(i) = (palette8 >> (2 * i)) & 0b11;
-
-    return palette;
-}
-
 
 void Ppu::render_frame()
 {
@@ -168,29 +142,10 @@ void Ppu::render_frame()
 
 void Ppu::render_scanline(uint8_t screen_y)
 {
-    // https://www.reddit.com/r/Gameboy/comments/a1c8h0/comment/eap4f8c/
-    // When the LCD is off, the Game Boy treats it as a complete reset
-    // Scanline set to 0, enters mode 0 and LCD Clock set to 0
-    // https://www.reddit.com/r/EmuDev/comments/wn1096/super_mario_land_displays_brief_glitch_screen/
-    // SML2 and Mr. Do! both rely on this behaviour
-    // There seems to be a screen-tearing effect when I leave this code on 
-    // I'm either missing something or this needs to be placed somewhere else
     if (!check_lcdc(LCDC::LCDPpuEnable)) 
-    {
-        // set_scanline(0);
-        // window_internal_scanline_y = 0;
-
-        // set_lcd_status(LCDStatus::Coincidence, false);
-        
-        // ppu_mode = Mode::HBlank;
-        // lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(ppu_mode);
-        
-        // cycles_elapsed = 0;
-
-        // GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
-
         return;
-    }
+
+    refresh_palettes();
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
@@ -229,20 +184,27 @@ void Ppu::render_bg_scanline(uint8_t screen_y)
     
     bool use_9C00_tile_map = check_lcdc(LCDC::BgTileMapArea);
 
-    auto palette = get_palette(bg_palette);
-
     // 21 unique tiles will need to be rendered at most
     for (int tile_x = 0; tile_x < GBResolution::TILES_PER_ROW_VISIBLE_MAX; ++tile_x)
-    {
+    {        
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = (screen_x + bg_scroll_x) & 0xFF;
-        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_9C00_tile_map);
+
+        uint8_t bg_map_attributes = fetch_bg_map_attributes(tile_map_x, tile_map_y, use_9C00_tile_map);
+        
+        bool flip_y = check_bg_map_attrib(BGMapAttributes::YFilp, bg_map_attributes);
+        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_9C00_tile_map, flip_y);
 
         // Get x-value of leftmost pixel on the tile in SCREEN coordinates
         int last_tile_screen_x = screen_x - tile_offset_x;
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
 
-        write_pixels(tile_pixels, last_tile_screen_x, screen_y, palette);
+        // Get palette and flip_x attributes 
+        uint8_t palette_idx = bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::ColourPalette);
+        auto& palette = bg_palettes.at(palette_idx);
+        bool flip_x = (bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::XFlip)) != 0;
+
+        write_pixels(tile_pixels, palette, last_tile_screen_x, screen_y, flip_x);
     }
 }
 
@@ -258,8 +220,6 @@ void Ppu::render_window_scanline(uint8_t screen_y)
 
     bool use_9C00_tile_map = check_lcdc(LCDC::WindowTileMap);
 
-    auto palette = get_palette(bg_palette);
-
     // Given the fact the window does not loop, 
     // there could range from 0 to 21 tiles to render on the screen at any given scanline.
     // Need to calculate based on the window_scroll_x and window_scroll_y values.
@@ -267,10 +227,19 @@ void Ppu::render_window_scanline(uint8_t screen_y)
     {
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = screen_x + total_scroll_x; // Window Layer does not loop
-        
-        auto tile_row = fetch_tile_row(screen_x, window_internal_scanline_y, use_9C00_tile_map);
+
+        uint8_t bg_map_attributes = fetch_bg_map_attributes(tile_map_x, window_internal_scanline_y, use_9C00_tile_map);
+
+        bool flip_y = check_bg_map_attrib(BGMapAttributes::YFilp, bg_map_attributes);
+        auto tile_row = fetch_tile_row(screen_x, window_internal_scanline_y, use_9C00_tile_map, flip_y);
+
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
-        write_pixels(tile_pixels, tile_map_x, screen_y, palette);
+
+        uint8_t palette_idx = bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::ColourPalette);
+        auto& palette = bg_palettes.at(palette_idx);        
+        bool flip_x = (bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::XFlip)) != 0;
+        
+        write_pixels(tile_pixels, palette, tile_map_x, screen_y, flip_x);
     }
 
     ++window_internal_scanline_y;
@@ -281,9 +250,6 @@ void Ppu::render_sprites_scanline(uint8_t screen_y)
     bool is_8x16 = check_lcdc(LCDC::ObjSize);
     int max_obj_height_idx = is_8x16 ? 15 : 7;
 
-    auto obj_palette_0 = get_palette(obj0_palette);
-    auto obj_palette_1 = get_palette(obj1_palette);
-
     for (const GBSprite& sprite : oam_buffer)
     {
         // Convert sprite position to screen coordinates
@@ -293,16 +259,15 @@ void Ppu::render_sprites_scanline(uint8_t screen_y)
         int tile_row_y = (sprite.flip_y) ? 
             max_obj_height_idx - (screen_y - obj_screen_y) : 
             screen_y - obj_screen_y; 
-
-        auto& palette = (sprite.dmg_palette_number == 0) ? 
-            obj_palette_0 : 
-            obj_palette_1;
-
+        
         int tile_num = (is_8x16) ? (sprite.tile_number & 0xFE) : sprite.tile_number;
-
-        auto tile_row = fetch_sprite_tile_row(tile_num, tile_row_y);
+        bool fetch_vram_bank_1 = (sprite.vram_bank == 1);
+        
+        auto tile_row = fetch_sprite_tile_row(tile_num, tile_row_y, fetch_vram_bank_1);
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second);
-        write_sprite_pixels(tile_pixels, obj_screen_x, screen_y, sprite, palette);
+
+        auto& palette = obj_palettes.at(sprite.cgb_palette);
+        write_sprite_pixels(tile_pixels, palette, sprite, obj_screen_x, screen_y);
     }
 }
 
@@ -338,24 +303,27 @@ void Ppu::oam_scan(uint8_t screen_y)
         oam_buffer.emplace_back(y_pos, x_pos, tile_num, attrib); 
     }
 
-    std::stable_sort(
-        oam_buffer.begin(), 
-        oam_buffer.end(), 
-        [](const GBSprite& s1, const GBSprite& s2)
-        {
-            return s1.x_pos >= s2.x_pos;
-        }
-    );
+    if (mmu.read_io_reg(OBJ_PRIORITY_MODE) != 0)
+    {
+        std::stable_sort(
+            oam_buffer.begin(), 
+            oam_buffer.end(), 
+            [](const GBSprite& s1, const GBSprite& s2)
+            {
+                return s1.x_pos >= s2.x_pos;
+            }
+        );
+    }
 }
 
-std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map) const
+std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map, bool flip_y) const
 { 
     int tile_x = (tile_map_x / GBTile::SIZE_PIXELS) & 0x1F;
     int tile_y = (tile_map_y / GBTile::SIZE_PIXELS) & 0x1F;
     int tile_id_offset = tile_x + (GBResolution::TILES_PER_ROW * tile_y); 
 
     uint16_t tile_map_start = use_9C00_tile_map ? TILE_MAP_9C00_START : TILE_MAP_9800_START;
-    uint8_t tile_id = mmu.read_byte(tile_map_start + tile_id_offset);
+    uint8_t tile_id = mmu.read_vram_0(tile_map_start + tile_id_offset);
 
     // Points to first row of tile
     uint16_t tile_address = check_lcdc(LCDC::BgWindowTileDataArea) ?
@@ -374,16 +342,24 @@ std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, 
 }
 
 /// @note Used specifically for sprites
-std::pair<uint8_t, uint8_t> Ppu::fetch_sprite_tile_row(int tile_id, int tile_map_y) const 
+std::pair<uint8_t, uint8_t> Ppu::fetch_sprite_tile_row(int tile_id, int tile_map_y, bool fetch_vram_bank_1) const 
 {    
     uint16_t row_address = TILE_DATA_ADDR0_START // Sprites always use 8000 method
         + (tile_id * GBTile::BYTES_PER_TILE) // Points to first row of tile
         + (tile_map_y * GBTile::BYTES_PER_ROW); // Points to right tile row
 
     // Get first two bytes of tile data to obtain one tile row
-    uint8_t tile_row_first_byte = mmu.read_byte(row_address);
-    uint8_t tile_row_second_byte = mmu.read_byte(row_address + 1);
-
+    uint8_t tile_row_first_byte{}, tile_row_second_byte{};
+    if (fetch_vram_bank_1)
+    {
+        tile_row_first_byte = mmu.read_vram_1(row_address);
+        tile_row_second_byte = mmu.read_vram_1(row_address + 1);
+    }
+    else 
+    {
+        tile_row_first_byte = mmu.read_vram_0(row_address);
+        tile_row_second_byte = mmu.read_vram_0(row_address + 1);
+    }
     return std::make_pair(tile_row_first_byte, tile_row_second_byte);
 }
 
@@ -404,7 +380,7 @@ std::array<uint8_t, 8> Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte)
     return pixels;
 }
 
-void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, std::array<uint8_t, 4>& palette)
+void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x)
 {
     if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
 
@@ -417,18 +393,19 @@ void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int sc
         else if (pixel_screen_x < 0) continue;
 
         int buffer_index = (GBResolution::WIDTH * screen_y) + pixel_screen_x;
-        int bit_index = 7 - i;        
+        int bit_index = (flip_x) ? i : 7 - i;
 
-        uint8_t raw_color_idx = tile_pixels.at(bit_index);
-        scanline_buffer.at(pixel_screen_x) = raw_color_idx;
+        uint8_t raw_colour_idx = tile_pixels.at(bit_index);
+        scanline_buffer.at(pixel_screen_x) = raw_colour_idx;
 
-        uint8_t palette_color = palette.at(raw_color_idx);
+        uint8_t palette_colour_low = palette.at(raw_colour_idx * 2);
+        uint8_t palette_colour_high = palette.at(raw_colour_idx * 2 + 1);
 
-        frame_buffer.at(buffer_index) = get_tile_colour(palette_color);
+        frame_buffer.at(buffer_index) = convert_rgb555_to_rgba32(palette_colour_high, palette_colour_low);
     }
 }
 
-void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, const GBSprite& sprite, std::array<uint8_t, 4>& palette)
+void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, const GBSprite& sprite, int screen_x, int screen_y)
 {
     if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
 
@@ -450,11 +427,58 @@ void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x,
         if (sprite.bg_priority == 1 && bg_color != 0)
             continue;
         
-        uint8_t palette_colour = palette.at(raw_colour_idx);
-        
+        uint8_t palette_colour_low = palette.at(raw_colour_idx * 2);
+        uint8_t palette_colour_high = palette.at(raw_colour_idx * 2 + 1);
+
         int buffer_index = (GBResolution::WIDTH * screen_y) + pixel_screen_x;
-        frame_buffer.at(buffer_index) = get_tile_colour(palette_colour);
+        frame_buffer.at(buffer_index) = convert_rgb555_to_rgba32(palette_colour_high, palette_colour_low);
     }
+}
+
+/* Game Boy Color Helper Methods */
+uint32_t Ppu::convert_rgb555_to_rgba32(uint8_t high_byte, uint8_t low_byte)
+{
+    uint8_t r5 = low_byte & 0x1F;
+    uint8_t g5 = ((high_byte & 3) << 3) | ((low_byte & 0xE0) >> 5);
+    uint8_t b5 = (high_byte & 0x7C) >> 2;
+
+    uint8_t r8 = (r5 << 3) | (r5 >> 2);
+    uint8_t g8 = (g5 << 3) | (g5 >> 2);
+    uint8_t b8 = (b5 << 3) | (b5 >> 2);
+
+    return (r8 << 24) | (g8 << 16) | (b8 << 8) | 0xFF;
+}
+
+/* Palette Methods */
+std::array<uint8_t, 8> Ppu::get_cgb_palette(std::array<uint8_t, 64>& cram_palette, uint8_t palette_num)
+{
+    std::array<uint8_t, 8> palette{};
+    for (int i = 0; i < palette.size(); ++i)
+        palette.at(i) = cram_palette.at(GBPalette::BYTES_PER_PALETTE * palette_num + i);
+
+    return palette;
+}
+
+void Ppu::refresh_palettes()
+{
+    auto& obj_cram = mmu.get_obj_cram();
+    auto& bg_cram = mmu.get_bg_cram();
+    for (int i = 0; i < bg_palettes.size(); ++i)
+    {
+        obj_palettes.at(i) = get_cgb_palette(obj_cram, i);
+        bg_palettes.at(i) = get_cgb_palette(bg_cram, i);
+    }
+}
+
+uint8_t Ppu::fetch_bg_map_attributes(int tile_map_x, int tile_map_y, bool use_9C00_tile_map)
+{
+    // I'll optimize this later
+    int tile_x = (tile_map_x / GBTile::SIZE_PIXELS) & 0x1F;
+    int tile_y = (tile_map_y / GBTile::SIZE_PIXELS) & 0x1F;
+    int tile_id_offset = tile_x + (GBResolution::TILES_PER_ROW * tile_y); 
+
+    uint16_t tile_attrib_start = (use_9C00_tile_map) ? TILE_MAP_9C00_START : TILE_MAP_9800_START;
+    return mmu.read_vram_1(tile_attrib_start + tile_id_offset);
 }
 
 /* Whole-frame rendering methods (Debugging) */

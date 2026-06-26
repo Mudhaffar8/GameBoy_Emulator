@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 #include <iostream>
+#include <cstddef>
+#include <bitset>
 
 #include "memory.hpp"
 #include "interrupts.hpp"
@@ -49,6 +51,11 @@ namespace GBTile
     constexpr int BYTES_PER_ROW = 2;
 }
 
+namespace GBPalette
+{
+    constexpr int BYTES_PER_PALETTE = 8;
+}
+
 /// @note Implementation assumes your system is little-endian. 
 struct GBSprite
 {
@@ -60,12 +67,15 @@ struct GBSprite
         uint8_t attributes{};
         struct 
         {
-            uint8_t cgb_palette : 3; // CGB Only
-            uint8_t bank : 1; // CGB Only
+            uint8_t cgb_palette : 3; // Which of OBP0-7 to use
+            uint8_t vram_bank : 1; // 0 = Fetch tile from VRAM bank 0, 1 = Fetch tile from VRAM bank 1
             uint8_t dmg_palette_number : 1; // If set to 0, the OBP0 register is used as the palette, otherwise OBP1
             uint8_t flip_x : 1;
             uint8_t flip_y : 1;
-            uint8_t bg_priority : 1; // 0 = sprite always above bg, 1 = bg colors 1-3 overlay sprite, sprite still rendered above 0
+            // OAM Attributes bit 7 will grant OBJ priority when clear, not when set.
+            // Priority between all OBJs is resolved before priority with the BG layer is considered.
+            // 0 = sprite always above bg, 1 = bg colors 1-3 overlay sprite, sprite still rendered above 0
+            uint8_t bg_priority : 1;
         };  
     };
 
@@ -79,9 +89,10 @@ struct GBSprite
 
     friend std::ostream& operator<<(std::ostream& os, const GBSprite& sprite) 
     {
+        std::byte b{sprite.attributes};
         os << "Sprite: (X: " << +sprite.x_pos << " Y: " << +sprite.y_pos
             << "), Tile num: " << +sprite.tile_number 
-            << ", attributes: " << +sprite.attributes;
+            << ", attributes: " << std::bitset<8>(std::to_integer<int>(b));
         return os; 
     }
 };
@@ -124,6 +135,23 @@ public:
         Unused = 0x80 // Unused (Always 1)
     };
 
+    enum class BGMapAttributes
+    {
+        ColourPalette = 0b111, // Color palette: Which of BGP0–7 to use
+        Bank = 0x08, // Bank: 0 = Fetch tile from VRAM bank 0; 1 = Fetch tile from VRAM bank 1
+        Unused = 0x10,
+        XFlip = 0x20,
+        YFilp = 0x40,
+        Priority = 0x80 // Priority: 0 = No; 1 = Color indices 1–3 of the corresponding BG/Window tile are drawn over OBJ, regardless of OBJ priority
+    };
+
+    /*
+        If the BG color index is 0, the OBJ will always have priority;
+        Otherwise, if LCDC bit 0 is clear, the OBJ will always have priority;
+        Otherwise, if both the BG Attributes and the OAM Attributes have bit 7 clear, the OBJ will have priority;
+        Otherwise, BG will have priority.
+    */
+
     /// @brief Frame buffer containing 32-bit RGBA pixel values.
     /// @todo Make this private.
     std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
@@ -156,19 +184,28 @@ public:
 
     /* Tile Methods */
     // Tile Row Fetching
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map) const; // For Window & Background Layers
-    std::pair<uint8_t, uint8_t> fetch_sprite_tile_row(int tile_id, int tile_map_y) const; // For Sprites Only
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map, bool flip_y) const; // For Window & Background Layers
+    std::pair<uint8_t, uint8_t> fetch_sprite_tile_row(int tile_id, int tile_map_y, bool fetch_vram_bank_1) const; // For Sprites Only
     
     // Tile Row Decoding
     std::array<uint8_t, 8> decode_tile_row(uint8_t hi_byte, uint8_t lo_byte);
    
     // Writing to Frame Buffer
-    void write_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, std::array<uint8_t, 4>& palette);
-    void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, int screen_x, int screen_y, const GBSprite& sprite, std::array<uint8_t, 4>& palette);
+    void write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x);
+    void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, const GBSprite& sprite, int screen_x, int screen_y);
     
     /* Palettes */
-    uint32_t get_tile_colour(uint8_t bit2) const;
-    std::array<uint8_t, 4> get_palette(uint8_t palette);
+    void refresh_palettes();
+    std::array<uint8_t, 8> get_cgb_palette(std::array<uint8_t, 64>& palette, uint8_t palette_num);
+    uint32_t convert_rgb555_to_rgba32(uint8_t high_byte, uint8_t low_byte);
+
+    /* Fetch BG Map Attributes */
+    uint8_t fetch_bg_map_attributes(int tile_map_x, int tile_map_y, bool use_9C00_tile_map);
+
+    inline bool check_bg_map_attrib(BGMapAttributes attrib_bit, uint8_t byte) const 
+    { 
+        return (byte & static_cast<uint8_t>(attrib_bit)) != 0; 
+    }
 
     /* LCDC Methods */
     inline void set_lcdc(LCDC lcdc_bit, bool cond) 
@@ -226,6 +263,10 @@ private:
     uint32_t cycles_elapsed = 0;
 
     uint8_t window_internal_scanline_y{};
+
+    /* CGB Palettes */
+    std::array<std::array<uint8_t, 8>, 8> obj_palettes;
+    std::array<std::array<uint8_t, 8>, 8> bg_palettes;
 
     /* Mode Switching */
     void update_ppu_mode(Mode new_mode);

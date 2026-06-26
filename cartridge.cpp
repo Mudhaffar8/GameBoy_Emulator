@@ -474,8 +474,10 @@ switch (address & 0xF000)
     // Set RAM Bank Number
     case 0x4000:
     case 0x5000:
-        ram_bank_number = (byte & 0xF);
-        //std::cout << "RAM Bank Number: " << +ram_bank_number << '\n'; 
+        {
+            uint8_t bitmask = std::min(0xF, get_num_ram_banks() - 1);
+            ram_bank_number = (byte & bitmask);
+        }
         break;
     
     case 0xA000:

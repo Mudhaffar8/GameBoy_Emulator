@@ -4,10 +4,10 @@
 
 Timer::Timer(Mmu& _mmu) : 
     mmu(_mmu),
-    div(mmu.read_io_reg(DIVIDER_REGISTER)),
-    tima(mmu.read_io_reg(TIMER_COUNTER)),
-    tma(mmu.read_io_reg(TIMER_MODULO)),
-    tac(mmu.read_io_reg(TIMER_CONTROL))
+    div(mmu.get_io_reg(DIVIDER_REGISTER)),
+    tima(mmu.get_io_reg(TIMER_COUNTER)),
+    tma(mmu.get_io_reg(TIMER_MODULO)),
+    tac(mmu.get_io_reg(TIMER_CONTROL))
 {}
 
 void Timer::tick(uint32_t cycles)
@@ -16,7 +16,7 @@ void Timer::tick(uint32_t cycles)
     div = (div_counter >> 8) & 0xFF;
 
     bool tima_enable = (tac & 0b100) != 0;
-    uint32_t clock_freq = clock_select_freq[tac & 0b11];
+    uint32_t clock_freq = clock_select_freq.at(tac & 0b11);
 
     if (!tima_enable) return;
 

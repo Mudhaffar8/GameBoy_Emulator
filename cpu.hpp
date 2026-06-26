@@ -5,11 +5,11 @@
 
 #include <cstdint>
 
-constexpr uint16_t DMG_AF_INIT = 0x01B0;
-constexpr uint16_t DMG_BC_INIT = 0x0013;
-constexpr uint16_t DMG_DE_INIT = 0x00D8;
-constexpr uint16_t DMG_HL_INIT = 0x014D;
-constexpr uint16_t DMG_SP_INIT = HIGH_RAM_END;
+constexpr uint16_t CGB_AF_INIT = 0x11B8;
+constexpr uint16_t CGB_BC_INIT = 0x0000;
+constexpr uint16_t CGB_DE_INIT = 0xFF56;
+constexpr uint16_t CGB_HL_INIT = 0x000D;
+constexpr uint16_t SP_INIT = HIGH_RAM_END;
 constexpr uint16_t PROGRAM_START = 0x100;
 
 /// @brief Represents a 16-bit register that can also be treated as two 8-bit values.
@@ -77,10 +77,10 @@ private:
 
     /* CPU Registers */
     // 16-bit Register pairs
-    RegPair AF{DMG_AF_INIT};
-    RegPair BC{DMG_BC_INIT};
-    RegPair DE{DMG_DE_INIT};
-    RegPair HL{DMG_HL_INIT};
+    RegPair AF{CGB_AF_INIT};
+    RegPair BC{CGB_BC_INIT};
+    RegPair DE{CGB_DE_INIT};
+    RegPair HL{CGB_HL_INIT};
 
     // Special case Registers 
     uint8_t& A = AF.high; // Accumulator
@@ -88,7 +88,7 @@ private:
 
     // 16-bit Registers
     uint16_t PC = PROGRAM_START; // Program Counter
-    uint16_t SP = HIGH_RAM_END; // Stack Pointer
+    uint16_t SP = SP_INIT; // Stack Pointer
 
     /* Interrupt handling Register/variables */
     uint8_t IR = 0; // 8-bit Instruction Register
