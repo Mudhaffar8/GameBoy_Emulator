@@ -13,11 +13,12 @@ void Joypad::handle_inputs(const bool* state)
         set_key(GBJoypad::DPAD_DOWN, state[SDL_SCANCODE_S]);
         set_key(GBJoypad::DPAD_LEFT, state[SDL_SCANCODE_A]);
         set_key(GBJoypad::DPAD_RIGHT, state[SDL_SCANCODE_D]);
+        return;
     }
     if (is_buttons_selected())
     {
-        set_key(GBJoypad::BUTTON_A, state[SDL_SCANCODE_J]);
-        set_key(GBJoypad::BUTTON_B, state[SDL_SCANCODE_K]);
+        set_key(GBJoypad::BUTTON_B, state[SDL_SCANCODE_J]);
+        set_key(GBJoypad::BUTTON_A, state[SDL_SCANCODE_K]);
         set_key(GBJoypad::BUTTON_SELECT, state[SDL_SCANCODE_SPACE]);
         set_key(GBJoypad::BUTTON_START, state[SDL_SCANCODE_RETURN]);
     }

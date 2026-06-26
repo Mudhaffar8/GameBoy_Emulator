@@ -149,23 +149,11 @@ void Ppu::render_scanline(uint8_t screen_y)
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
-    bool bg_window_enable = check_lcdc(LCDC::BgWindowEnable);
-    if (bg_window_enable)
-    {
-        render_bg_scanline(screen_y);
+    render_bg_scanline(screen_y);
 
-        bool window_enable = check_lcdc(LCDC::WindowEnable);
-        if (window_enable)
-            render_window_scanline(screen_y);
-    }
-    else
-    {
-        std::fill(
-            frame_buffer.begin() + (GBResolution::WIDTH * screen_y), 
-            frame_buffer.begin() + (GBResolution::WIDTH * screen_y) + GBResolution::WIDTH,
-            GBColours::COLOUR_00
-        );
-    }
+    bool window_enable = check_lcdc(LCDC::WindowEnable);
+    if (window_enable)
+        render_window_scanline(screen_y);
 
     bool obj_enable = check_lcdc(LCDC::ObjEnable);
     if (obj_enable)
@@ -193,7 +181,8 @@ void Ppu::render_bg_scanline(uint8_t screen_y)
         uint8_t bg_map_attributes = fetch_bg_map_attributes(tile_map_x, tile_map_y, use_9C00_tile_map);
         
         bool flip_y = check_bg_map_attrib(BGMapAttributes::YFilp, bg_map_attributes);
-        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_9C00_tile_map, flip_y);
+        bool fetch_vram_1 = check_bg_map_attrib(BGMapAttributes::VRamBank, bg_map_attributes);
+        auto tile_row = fetch_tile_row(tile_map_x, tile_map_y, use_9C00_tile_map, flip_y, fetch_vram_1);
 
         // Get x-value of leftmost pixel on the tile in SCREEN coordinates
         int last_tile_screen_x = screen_x - tile_offset_x;
@@ -202,9 +191,10 @@ void Ppu::render_bg_scanline(uint8_t screen_y)
         // Get palette and flip_x attributes 
         uint8_t palette_idx = bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::ColourPalette);
         auto& palette = bg_palettes.at(palette_idx);
-        bool flip_x = (bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::XFlip)) != 0;
 
-        write_pixels(tile_pixels, palette, last_tile_screen_x, screen_y, flip_x);
+        bool flip_x = check_bg_map_attrib(BGMapAttributes::XFlip, bg_map_attributes);
+        bool bg_priority = check_bg_map_attrib(BGMapAttributes::Priority, bg_map_attributes);
+        write_pixels(tile_pixels, palette, last_tile_screen_x, screen_y, flip_x, bg_priority);
     }
 }
 
@@ -228,18 +218,20 @@ void Ppu::render_window_scanline(uint8_t screen_y)
         int screen_x = tile_x * GBTile::SIZE_PIXELS;
         int tile_map_x = screen_x + total_scroll_x; // Window Layer does not loop
 
-        uint8_t bg_map_attributes = fetch_bg_map_attributes(tile_map_x, window_internal_scanline_y, use_9C00_tile_map);
+        uint8_t bg_map_attributes = fetch_bg_map_attributes(screen_x, window_internal_scanline_y, use_9C00_tile_map);
 
         bool flip_y = check_bg_map_attrib(BGMapAttributes::YFilp, bg_map_attributes);
-        auto tile_row = fetch_tile_row(screen_x, window_internal_scanline_y, use_9C00_tile_map, flip_y);
+        bool fetch_vram_1 = check_bg_map_attrib(BGMapAttributes::VRamBank, bg_map_attributes);
+        auto tile_row = fetch_tile_row(screen_x, window_internal_scanline_y, use_9C00_tile_map, flip_y, fetch_vram_1);
 
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second); 
 
         uint8_t palette_idx = bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::ColourPalette);
-        auto& palette = bg_palettes.at(palette_idx);        
-        bool flip_x = (bg_map_attributes & static_cast<uint8_t>(BGMapAttributes::XFlip)) != 0;
-        
-        write_pixels(tile_pixels, palette, tile_map_x, screen_y, flip_x);
+        auto& palette = bg_palettes.at(palette_idx);    
+
+        bool flip_x = check_bg_map_attrib(BGMapAttributes::XFlip, bg_map_attributes);
+        bool bg_priority = check_bg_map_attrib(BGMapAttributes::Priority, bg_map_attributes);
+        write_pixels(tile_pixels, palette, tile_map_x, screen_y, flip_x, bg_priority);
     }
 
     ++window_internal_scanline_y;
@@ -250,24 +242,24 @@ void Ppu::render_sprites_scanline(uint8_t screen_y)
     bool is_8x16 = check_lcdc(LCDC::ObjSize);
     int max_obj_height_idx = is_8x16 ? 15 : 7;
 
-    for (const GBSprite& sprite : oam_buffer)
+    for (auto sprite = oam_buffer.rbegin(); sprite != oam_buffer.rend(); ++sprite)
     {
         // Convert sprite position to screen coordinates
-        int obj_screen_y = static_cast<int>(sprite.y_pos) - 16;
-        int obj_screen_x = static_cast<int>(sprite.x_pos) - 8;
+        int obj_screen_y = static_cast<int>(sprite->y_pos) - 16;
+        int obj_screen_x = static_cast<int>(sprite->x_pos) - 8;
 
-        int tile_row_y = (sprite.flip_y) ? 
+        int tile_row_y = (sprite->flip_y) ? 
             max_obj_height_idx - (screen_y - obj_screen_y) : 
             screen_y - obj_screen_y; 
         
-        int tile_num = (is_8x16) ? (sprite.tile_number & 0xFE) : sprite.tile_number;
-        bool fetch_vram_bank_1 = (sprite.vram_bank == 1);
+        int tile_num = (is_8x16) ? (sprite->tile_number & 0xFE) : sprite->tile_number;
+        bool fetch_vram_bank_1 = (sprite->vram_bank == 1);
         
         auto tile_row = fetch_sprite_tile_row(tile_num, tile_row_y, fetch_vram_bank_1);
         auto tile_pixels = decode_tile_row(tile_row.first, tile_row.second);
 
-        auto& palette = obj_palettes.at(sprite.cgb_palette);
-        write_sprite_pixels(tile_pixels, palette, sprite, obj_screen_x, screen_y);
+        auto& palette = obj_palettes.at(sprite->cgb_palette);
+        write_sprite_pixels(tile_pixels, palette, *sprite, obj_screen_x, screen_y);
     }
 }
 
@@ -316,7 +308,7 @@ void Ppu::oam_scan(uint8_t screen_y)
     }
 }
 
-std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map, bool flip_y) const
+std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, bool use_9C00_tile_map, bool flip_y, bool fetch_vram_1) const
 { 
     int tile_x = (tile_map_x / GBTile::SIZE_PIXELS) & 0x1F;
     int tile_y = (tile_map_y / GBTile::SIZE_PIXELS) & 0x1F;
@@ -330,13 +322,26 @@ std::pair<uint8_t, uint8_t> Ppu::fetch_tile_row(int tile_map_x, int tile_map_y, 
         TILE_DATA_ADDR0_START + (tile_id * GBTile::BYTES_PER_TILE) : 
         TILE_DATA_ADDR1_START + (static_cast<int8_t>(tile_id) * GBTile::BYTES_PER_TILE);
     
+    uint8_t y = (flip_y) ? 
+        7 - (tile_map_y % GBTile::SIZE_PIXELS) : 
+        (tile_map_y % GBTile::SIZE_PIXELS);
+    
     // Points to correct row of tile
     uint16_t row_address = tile_address
-        + ((tile_map_y % GBTile::SIZE_PIXELS) * GBTile::BYTES_PER_ROW);
+        + (y * GBTile::BYTES_PER_ROW);
 
     // Get first two bytes of tile data to obtain one tile row
-    uint8_t tile_row_first_byte = mmu.read_byte(row_address);
-    uint8_t tile_row_second_byte = mmu.read_byte(row_address + 1);
+    uint8_t tile_row_first_byte{}, tile_row_second_byte{};
+    if (fetch_vram_1)
+    {
+        tile_row_first_byte = mmu.read_vram_1(row_address);
+        tile_row_second_byte = mmu.read_vram_1(row_address + 1);
+    }
+    else 
+    {
+        tile_row_first_byte = mmu.read_vram_0(row_address);
+        tile_row_second_byte = mmu.read_vram_0(row_address + 1);
+    }
 
     return std::make_pair(tile_row_first_byte, tile_row_second_byte);
 }
@@ -380,7 +385,7 @@ std::array<uint8_t, 8> Ppu::decode_tile_row(uint8_t hi_byte, uint8_t lo_byte)
     return pixels;
 }
 
-void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x)
+void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x, bool bg_priority)
 {
     if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
 
@@ -397,6 +402,7 @@ void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 
 
         uint8_t raw_colour_idx = tile_pixels.at(bit_index);
         scanline_buffer.at(pixel_screen_x) = raw_colour_idx;
+        if (bg_priority) scanline_buffer.at(pixel_screen_x) |= static_cast<uint8_t>(bg_palette);
 
         uint8_t palette_colour_low = palette.at(raw_colour_idx * 2);
         uint8_t palette_colour_high = palette.at(raw_colour_idx * 2 + 1);
@@ -408,6 +414,8 @@ void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 
 void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, const GBSprite& sprite, int screen_x, int screen_y)
 {
     if (screen_y < 0 || screen_y >= GBResolution::HEIGHT) return; 
+
+    bool bg_window_enable = check_lcdc(LCDC::BgWindowEnable);
 
     // Starts from right pixel to left
     for (int i = 0; i < GBTile::SIZE_PIXELS; ++i)
@@ -422,9 +430,11 @@ void Ppu::write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<ui
 
         if (raw_colour_idx == 0) continue;
 
-        uint8_t bg_color = scanline_buffer.at(pixel_screen_x);
+        uint8_t bg_pixel = scanline_buffer.at(pixel_screen_x);
+        uint8_t bg_color_idx = bg_pixel & 0x3;
+        bool bg_priority = bg_pixel & 0x80;
 
-        if (sprite.bg_priority == 1 && bg_color != 0)
+        if (bg_color_idx != 0 && bg_window_enable && !(bg_priority == 0 && sprite.bg_priority == 0))
             continue;
         
         uint8_t palette_colour_low = palette.at(raw_colour_idx * 2);

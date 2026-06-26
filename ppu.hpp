@@ -138,7 +138,7 @@ public:
     enum class BGMapAttributes
     {
         ColourPalette = 0b111, // Color palette: Which of BGP0–7 to use
-        Bank = 0x08, // Bank: 0 = Fetch tile from VRAM bank 0; 1 = Fetch tile from VRAM bank 1
+        VRamBank = 0x08, // Bank: 0 = Fetch tile from VRAM bank 0; 1 = Fetch tile from VRAM bank 1
         Unused = 0x10,
         XFlip = 0x20,
         YFilp = 0x40,
@@ -184,14 +184,14 @@ public:
 
     /* Tile Methods */
     // Tile Row Fetching
-    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map, bool flip_y) const; // For Window & Background Layers
+    std::pair<uint8_t, uint8_t> fetch_tile_row(int tile_map_x, int tile_map_y, bool use_bg_tile_map, bool flip_y, bool fetch_vram_1) const; // For Window & Background Layers
     std::pair<uint8_t, uint8_t> fetch_sprite_tile_row(int tile_id, int tile_map_y, bool fetch_vram_bank_1) const; // For Sprites Only
     
     // Tile Row Decoding
     std::array<uint8_t, 8> decode_tile_row(uint8_t hi_byte, uint8_t lo_byte);
    
     // Writing to Frame Buffer
-    void write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x);
+    void write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, int screen_x, int screen_y, bool flip_x, bool bg_priority);
     void write_sprite_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 8>& palette, const GBSprite& sprite, int screen_x, int screen_y);
     
     /* Palettes */

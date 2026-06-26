@@ -340,7 +340,7 @@ void Cartridge::mbc3_write(uint8_t byte, uint16_t address)
     case 0x2000:
     case 0x3000:
         rom_bank_number = (byte == 0) ? 1 : (byte & 0x7F);
-        std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
+        //std::cout << "ROM Bank Number: " << rom_bank_number << '\n';
         break;
     
     case 0x4000:

@@ -46,6 +46,8 @@ public:
     void print_registers() const;
     void print_flags() const;
 
+    bool is_double_speed() { return double_speed_mode; }
+
     /* Temporary Getters */
     RegPair& get_af() { return AF; }
     RegPair& get_bc() { return BC; }
@@ -73,7 +75,9 @@ private:
         HalfCarry = 0x20,
         Carry = 0x10
     };
-    
+
+    /* Cycle counting (In T-cycles)*/
+    uint32_t ticks = 0;
 
     /* CPU Registers */
     // 16-bit Register pairs
@@ -95,8 +99,7 @@ private:
     bool IME = false; // Interrupt Master Enable
     bool is_halted = false; 
 
-    /* Cycle counting (In T-cycles)*/
-    uint32_t ticks = 0;
+    bool double_speed_mode = false;
 
     /* Instruction Execution */
     void cb_execute();
@@ -181,6 +184,7 @@ private:
 
     // Miscellaneous 
     inline void daa();
+    inline void stop();
 
     // Interrupt Handling
     void check_interrupts();

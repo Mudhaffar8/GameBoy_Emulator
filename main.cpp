@@ -261,9 +261,14 @@ void rom_test(const std::string& rom_name)
             joypad.handle_inputs(state);
             
             uint32_t cycles = cpu.execute_instruction();
+            timer.tick(cycles);
+            if (cpu.is_double_speed())
+            {            
+                auto _ = cpu.execute_instruction();
+                timer.tick(cycles);
+            }
 
             ppu.tick(cycles);
-            timer.tick(cycles);
 
             cycles_elapsed += cycles;
         }
@@ -281,10 +286,6 @@ void rom_test(const std::string& rom_name)
         //std::cout << "Frame Elapsed!\n";
         ++frames_elapsed;
     }
-
-    mmu.print_bg_cram();
-    std::cout << "---------------------\n";
-    mmu.print_obj_cram();
 }
 
 // Both Window, BG drawing On top of each other

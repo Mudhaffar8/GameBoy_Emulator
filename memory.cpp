@@ -65,6 +65,7 @@ void Mmu::vram_dma_transfer(uint8_t vram_dma_len_mode)
 {
     /// @todo
     // HBlank DMA = 0x10 bytes every HBlank
+    std::cout << "VRAM Data Transfer!\n";
     bool is_hblank_dma = (vram_dma_len_mode & 0x80) != 0;
 
     int data_length = vram_dma_len_mode & 0x7F;
@@ -78,18 +79,18 @@ void Mmu::vram_dma_transfer(uint8_t vram_dma_len_mode)
     uint8_t vram_dma_dst_low = io_registers.at(HDMA4 - IO_REGISTERS_START);
     uint16_t dst_address = ((vram_dma_dst_high << 8) | vram_dma_dst_low) & 0x1FF0;
 
-    if (!is_hblank_dma)
-    {
+    // if (!is_hblank_dma)
+    // {
         for (int i = 0; i < data_length; ++i)
         {
             uint8_t byte = read_byte(source_address + i);
             write_byte(byte, dst_address + i);
         }
-    }
-    else
-    {
+    // }
+    // else
+    // {
 
-    }
+    // }
 }
 
 /* Writing from memory */
@@ -113,7 +114,7 @@ void Mmu::write_byte(uint8_t byte, int address)
     /* Tile Data*/
     case 0x8000:
     case 0x9000:
-        if ((io_registers.at(VRAM_BANK_SELECT - IO_REGISTERS_START) & 1) == 0)
+        if ((read_io_reg(VRAM_BANK_SELECT) & 1) == 0)
             vram_bank_0.at(address - 0x8000) = byte;
         else 
             vram_bank_1.at(address - 0x8000) = byte;
@@ -206,11 +207,6 @@ void Mmu::write_io_reg(uint8_t byte, int address)
             uint8_t addr = obj_palette_idx & 0x3F;
 
             obj_cram.at(addr) = byte;
-
-            std::cout << "OBJ CRAM Address: " << std::dec << +addr << '\n';
-            std::cout << "Byte to Write: " << std::hex << +byte << '\n';
-            print_obj_cram();
-            std::cout << "----------------------\n";
             
             if (auto_increment)
             {
@@ -254,12 +250,14 @@ uint8_t Mmu::read_byte(int address)
     case 0x5000:
     case 0x6000:
     case 0x7000:
+        // if (cartridge) 
         return cartridge->memory_read(address);
+        // else return rom_data.at(address);
     
     /* VRAM */
     case 0x8000:
     case 0x9000:
-        if ((io_registers.at(VRAM_BANK_SELECT - IO_REGISTERS_START) & 1) == 0)
+        if ((read_io_reg(VRAM_BANK_SELECT) & 1) == 0)
             return vram_bank_0.at(address - 0x8000);
         else 
             return vram_bank_1.at(address - 0x8000);

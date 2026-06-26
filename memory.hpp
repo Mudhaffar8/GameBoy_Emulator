@@ -237,22 +237,19 @@ public:
         {
             for (int j = 0; j < 8; ++j)
             {
-                std::cout << "0x" << std::dec << +bg_cram[j + (8 * i)] << ", ";
+                std::cout << "0x" << std::hex << +bg_cram[j + (8 * i)] << ", ";
             }
             std::cout << '\n';
         }
     }
 
-    // #ff00ff
-    // #ffff00
-    // 
     inline void print_obj_cram()
     {
         for (int i = 0; i < 7; ++i)
         {
             for (int j = 0; j < 8; ++j)
             {
-                std::cout << "0x" << std::dec << +obj_cram[j + (8 * i)] << ", ";
+                std::cout << "0x" << std::hex << +obj_cram[j + (8 * i)] << ", ";
             }
             std::cout << '\n';
         }

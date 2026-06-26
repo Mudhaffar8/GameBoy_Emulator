@@ -13,7 +13,7 @@ Display::Display(Ppu& _ppu) :
     }
 
     if (!SDL_CreateWindowAndRenderer(
-        "Game Boy Emulator", 
+        "Game Boy Colour Emulator", 
         GBResolution::WIDTH, 
         GBResolution::HEIGHT, 
         SDL_WINDOW_RESIZABLE, 

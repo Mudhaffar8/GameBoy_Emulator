@@ -477,7 +477,7 @@ uint32_t Cpu::execute_instruction()
     // 0x10 + n8
     // 4 T-cycles
     case 0x10:
-        // is_halted = true;
+        stop();
         break;
 
     
@@ -1997,6 +1997,22 @@ inline void Cpu::daa()
     set_flag(Flags::Zero, A == 0);
     set_flag(Flags::HalfCarry, false);
 }
+
+inline void Cpu::stop()
+{
+    /// @note STOP isn't always a one byte or two byte instruction
+    /// There's this long diagram on the exact behaviours of implementing STOP 
+    /// https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
+    /// I'll keep things like this for now
+    uint8_t& key1 = mem.get_io_reg(KEY_1);
+    double_speed_mode = (key1 & 1) == 1;
+    
+    key1 &= 0x00;
+    key1 |= static_cast<uint8_t>(double_speed_mode) << 7;
+
+    std::cout << "Speed Switch: " << std::hex << +key1 << '\n';
+}
+
 
 void Cpu::check_interrupts()
 {
