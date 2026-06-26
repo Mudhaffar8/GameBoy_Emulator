@@ -162,7 +162,8 @@ uint8_t Mmu::read_byte(int address)
     case 0x5000:
     case 0x6000:
     case 0x7000:
-        return cartridge->memory_read(address);
+        if (cartridge) return cartridge->memory_read(address);
+        else return rom_data.at(address);
     
     /* VRAM */
     case 0x8000:

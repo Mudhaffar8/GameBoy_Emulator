@@ -12,6 +12,7 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 ## Current Features
 - Accurate implementation of all 501 GameBoy opcodes, passing Blargg's `cpu_instrs.gb` rom test and all instructions (except for EI) passing [SingleStepTest's SM83 Test Suite](https://github.com/SingleStepTests/sm83). For more info, check out sm83-tests branch. 
 - All PPU features supported and tested with the [dmg-acid2](https://github.com/mattcurrie/dmg-acid2/tree/master) test rom:
+- [Game Boy Color Support](https://github.com/Mudhaffar8/GameBoy_Emulator/tree/CGB-Support)
 - Support for the following cartridge types with optional RAM:
   - ROM-only
   - MBC1
@@ -19,7 +20,7 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
   - MBC5 (No Rumble support)
 
 ## Planned Updates
-- GBC support.
+- More accurate emulation & debugging.
 - Save states.
 - Controller Rebinding. 
 - Debugger?
@@ -29,7 +30,9 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 # Showcase
 ![Dr. Mario Start Screen](./images/dr_mario_start.png) ![Dr. Mario Gameplay](./images/dr_mario_game.png) ![Dr. Mario Game Over](./images/dr_mario_over.png)
 
-![dmg-acid2 Test Result](./images/dmg-acid2.png) ![Blargg's CPU Instructions Test Result](./images/passed_blargg.png)
+![dmg-acid2 Test Result](./images/dmg-acid2.png) ![cgb-acid2 Test Result](./images/cgb-acid2.png) 
+
+![Blargg's CPU Instructions Test Result](./images/passed_blargg.png)
 
 # Helpful Resources I Used
 - [Pandocs](https://gbdev.io/pandocs/About.html)

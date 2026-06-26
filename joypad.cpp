@@ -14,7 +14,7 @@ void Joypad::handle_inputs(const bool* state)
         set_key(GBJoypad::DPAD_LEFT, state[SDL_SCANCODE_A]);
         set_key(GBJoypad::DPAD_RIGHT, state[SDL_SCANCODE_D]);
     }
-    if (is_buttons_selected())
+    else if (is_buttons_selected())
     {
         set_key(GBJoypad::BUTTON_B, state[SDL_SCANCODE_J]);
         set_key(GBJoypad::BUTTON_A, state[SDL_SCANCODE_K]);
@@ -41,7 +41,7 @@ void Joypad::set_key(uint8_t input_bit, bool cond)
 
     if (cond)
     {
-        joypad_input = ~input_bit;
+        joypad_input &= ~input_bit;
         if (prev_bit != 0)
             GBInterrupts::request_interrupt(mmu, Interrupts::JoyPad);
     }
