@@ -30,7 +30,7 @@ This is a GameBoy emulator written in C++17 with SDL3 support for window renderi
 # Showcase
 ![Dr. Mario Start Screen](./images/dr_mario_start.png) ![Dr. Mario Gameplay](./images/dr_mario_game.png) ![Dr. Mario Game Over](./images/dr_mario_over.png)
 
-![dmg-acid2 Test Result](./images/dmg-acid2.png) ![cgb-acid2 Test Result](./images/cgb-acid2.png) 
+ ![cgb-acid2 Test Result](./images/cgb-acid2.png) ![dmg-acid2 Test Result](./images/dmg-acid2.png)
 
 ![Blargg's CPU Instructions Test Result](./images/passed_blargg.png)
 
