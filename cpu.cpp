@@ -1072,7 +1072,6 @@ uint32_t Cpu::execute_instruction()
     // AND A, n8
     case 0xE6:
         and_a(mem.read_byte(PC++));
-
         ticks = 8;
         break;
     // OR A, n8
@@ -1147,8 +1146,9 @@ uint32_t Cpu::execute_instruction()
         break;
     // CP A, n8
     case 0xFE:
+        // std::cout << std::hex << "CP A, n8\n";
+        // std::cout << std::hex << "Accumulator value: " << +A << std::endl;
         cp_a(mem.read_byte(PC++));
-        
         ticks = 8;
         break;
 
@@ -1168,6 +1168,7 @@ uint32_t Cpu::execute_instruction()
     case 0xE0:
     {
         uint8_t imm8 = mem.read_byte(PC++);
+
         mem.write_byte(A, IO_REGISTERS_START + imm8);
 
         ticks = 12;
@@ -2005,10 +2006,13 @@ inline void Cpu::stop()
     /// There's this long diagram on the exact behaviours of implementing STOP 
     /// https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
     uint8_t& key1 = mem.get_io_reg(KEY_1);
-    double_speed_mode = (key1 & 1) == 1;
+    bool is_armed = (key1 & 1) == 1;
     
-    key1 &= 0x00;
-    key1 |= static_cast<uint8_t>(double_speed_mode) << 7;
+    if (is_armed)
+    {
+        double_speed_mode = !double_speed_mode;
+        key1 = double_speed_mode ? 0x80 : 0x00; 
+    }
 
     std::cout << "Speed Switch: " << std::hex << +key1 << '\n';
 }

@@ -66,7 +66,7 @@ void Mmu::vram_dma_transfer(uint8_t vram_dma_len_mode)
     // and common emulation (& ROM) bugs
 
     // HBlank DMA = 0x10 bytes every HBlank
-    //std::cout << "VRAM Data Transfer!\n";
+    std::cout << "VRAM Data Transfer!\n";
     bool is_hblank_dma = (vram_dma_len_mode & 0x80) != 0;
     int data_length = ((vram_dma_len_mode & 0x7F) + 1) * 0x10;
     // std::cout << "Data Length Before: " << data_length << '\n';
@@ -183,6 +183,14 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     case LCD_Y_COORDINATE:
         break;
 
+    case KEY_1:
+        {
+            uint8_t& key_1 = io_registers.at(KEY_1 - IO_REGISTERS_START);
+            key_1 &= 0x80;
+            key_1 |= byte;
+            break;
+        }
+
     case BG_PALETTE_DATA:
         {
             uint8_t& bg_palette_idx = get_io_reg(BG_PALETTE_IDX);
@@ -296,18 +304,7 @@ uint8_t Mmu::read_byte(int address)
             return 0;
         }
         else if (address <= IO_REGISTERS_END)
-        {
-            switch(address)
-            {
-                case JOYPAD_INPUT:
-                    if ((JOYPAD_INPUT & 0x30) == 0x30)
-                        return 0x3F;
-                    else 
-                        return io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
-                default:
-                    return read_io_reg(address);
-            } 
-        }
+            return read_io_reg(address);
         else if (address <= HIGH_RAM_END)
             return high_ram.at(address - HIGH_RAM_START);
         else 
@@ -338,6 +335,18 @@ uint8_t Mmu::read_io_reg(int address)
 
             return bg_cram.at(addr);
         }
+
+    case JOYPAD_INPUT:
+        {
+            uint8_t joypad_input = io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START);
+            if ((joypad_input & 0x30) == 0x30)
+                return 0x3F;
+            else 
+                return joypad_input;
+        }
+
+    case KEY_1:
+        return io_registers.at(KEY_1 - IO_REGISTERS_START);
 
     default:
         return io_registers.at(address - IO_REGISTERS_START);

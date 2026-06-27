@@ -242,6 +242,20 @@ void Ppu::render_sprites_scanline(uint8_t screen_y)
     bool is_8x16 = check_lcdc(LCDC::ObjSize);
     int max_obj_height_idx = is_8x16 ? 15 : 7;
 
+    // int start{}, end{}, inc{};
+    // if (mmu.read_io_reg(OBJ_PRIORITY_MODE) != 0)
+    // {
+    //     start = 0;
+    //     end = oam_buffer.size();
+    //     inc = 1;
+    // }
+    // else 
+    // {
+    //     start = oam_buffer.size() - 1;
+    //     end = -1;
+    //     inc = -1;
+    // }
+
     for (auto sprite = oam_buffer.rbegin(); sprite != oam_buffer.rend(); ++sprite)
     {
         // Convert sprite position to screen coordinates
@@ -273,7 +287,7 @@ void Ppu::oam_scan(uint8_t screen_y)
     
     oam_buffer.clear();
 
-    uint8_t obj_height = check_lcdc(LCDC::ObjSize) ? 16 : 8;
+    uint8_t obj_height = check_lcdc(LCDC::ObjSize) ? 16 : 8;    
 
     for (int i = 0; i < TOTAL_OAM_ENTRIES; ++i)
     {
