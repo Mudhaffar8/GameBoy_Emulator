@@ -2001,9 +2001,9 @@ inline void Cpu::daa()
 inline void Cpu::stop()
 {
     /// @note STOP isn't always a one byte or two byte instruction
+    /// and I'm pretty sure this will cause bugs in other games
     /// There's this long diagram on the exact behaviours of implementing STOP 
     /// https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
-    /// I'll keep things like this for now
     uint8_t& key1 = mem.get_io_reg(KEY_1);
     double_speed_mode = (key1 & 1) == 1;
     

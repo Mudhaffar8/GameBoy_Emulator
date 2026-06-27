@@ -5,14 +5,11 @@
 #include <iostream>
 #include <thread>
 
-Mmu::Mmu()
+Mmu::Mmu(Cartridge* new_cartridge) : 
+    cartridge(new_cartridge)
 {
-    initialize_memory();
-}
-
-void Mmu::initialize_memory()
-{
-    std::copy(nintendo_logo.begin(), nintendo_logo.end(), rom_data.begin() + NINTENDO_LOGO_START);
+    
+   std::copy(nintendo_logo.begin(), nintendo_logo.end(), rom_data.begin() + NINTENDO_LOGO_START);
 
     io_registers.at(OAM_DMA_TRANSFER - IO_REGISTERS_START) = 0xFF;
     io_registers.at(JOYPAD_INPUT - IO_REGISTERS_START) = 0x0F;
@@ -33,7 +30,7 @@ bool Mmu::load_boot_rom(const std::string& path)
 
     if (!file.is_open()) 
     {
-        std::cerr << "File does not exist" << std::endl;
+        std::cerr << "File does not exist: " << path << std::endl;
         return false;
     }
 
@@ -63,34 +60,38 @@ void Mmu::oam_dma_transfer(uint8_t source)
 
 void Mmu::vram_dma_transfer(uint8_t vram_dma_len_mode)
 {
-    /// @todo
-    // HBlank DMA = 0x10 bytes every HBlank
-    std::cout << "VRAM Data Transfer!\n";
-    bool is_hblank_dma = (vram_dma_len_mode & 0x80) != 0;
+    /// @todo Implement HDMA
+    // https://jsgroth.dev/blog/posts/emulator-bugs-gbc-hdma/
+    // This blog is super useful on how VRAM DMA Transfer works
+    // and common emulation (& ROM) bugs
 
-    int data_length = vram_dma_len_mode & 0x7F;
-    data_length &= (data_length < 0x10) ? 0x10 : (data_length * 10) - 1;
+    // HBlank DMA = 0x10 bytes every HBlank
+    //std::cout << "VRAM Data Transfer!\n";
+    bool is_hblank_dma = (vram_dma_len_mode & 0x80) != 0;
+    int data_length = ((vram_dma_len_mode & 0x7F) + 1) * 0x10;
+    // std::cout << "Data Length Before: " << data_length << '\n';
+
+    // std::cout << "Data Length: " << std::hex << data_length << '\n';
+    // std::cout << "HBlank DMA? " << is_hblank_dma << '\n';
 
     uint8_t vram_dma_source_high = io_registers.at(HDMA1 - IO_REGISTERS_START);
     uint8_t vram_dma_source_low = io_registers.at(HDMA2 - IO_REGISTERS_START);
     uint16_t source_address = ((vram_dma_source_high << 8) | vram_dma_source_low) & 0xFFF0;
+    //std::cout << "Source Address: " << std::hex << +source_address << '\n';
 
     uint8_t vram_dma_dst_high = io_registers.at(HDMA3 - IO_REGISTERS_START);
     uint8_t vram_dma_dst_low = io_registers.at(HDMA4 - IO_REGISTERS_START);
     uint16_t dst_address = ((vram_dma_dst_high << 8) | vram_dma_dst_low) & 0x1FF0;
+    dst_address = VRAM_START + dst_address;
+    // std::cout << "Destination Address: " << std::hex << +dst_address << '\n';
 
-    // if (!is_hblank_dma)
-    // {
-        for (int i = 0; i < data_length; ++i)
-        {
-            uint8_t byte = read_byte(source_address + i);
-            write_byte(byte, dst_address + i);
-        }
-    // }
-    // else
-    // {
-
-    // }
+    // std::cout << "---------------------\n";
+ 
+    for (int i = 0; i < data_length; ++i)
+    {
+        uint8_t byte = read_byte(source_address + i);
+        write_byte(byte, dst_address + i);
+    }
 }
 
 /* Writing from memory */
@@ -152,7 +153,8 @@ void Mmu::write_byte(uint8_t byte, int address)
         else if (address <= OAM_END)
             oam_data.at(address - OAM_START) = byte;
         else if (address <= UNUSABLE_END)
-            std::cout << "Illegal write to UNUSABLE @ " << std::hex << address << '\n';
+            break;
+            //std::cout << "Illegal write to UNUSABLE @ " << std::hex << address << '\n';
         else if (address <= IO_REGISTERS_END)
             write_io_reg(byte, address);
         else if (address <= HIGH_RAM_END)

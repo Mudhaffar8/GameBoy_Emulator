@@ -165,4 +165,6 @@ private:
     /* MBC3 Helper Methods */
     void write_to_rtc_register(uint8_t byte);
     uint8_t read_to_rtc_register();
+
+    friend class Gameboy;
 };

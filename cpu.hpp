@@ -189,4 +189,6 @@ private:
     // Interrupt Handling
     void check_interrupts();
     void handle_interrupt();
+
+    friend class Gameboy;
 };

@@ -273,4 +273,6 @@ private:
 
     inline void set_scanline(uint8_t new_scanline);
     inline void update_coincidence_flag();
+
+    friend class Gameboy;
 };

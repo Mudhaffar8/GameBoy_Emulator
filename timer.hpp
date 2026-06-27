@@ -29,4 +29,6 @@ private:
 
     uint16_t div_counter;
     uint16_t timer_counter;
+
+    friend class Gameboy;
 };

@@ -194,9 +194,7 @@ constexpr uint16_t HIGH_RAM_SIZE = HIGH_RAM_END - HIGH_RAM_START + 1;
 class Mmu
 {
 public:
-    Mmu();
-
-    void initialize_memory();
+    Mmu(Cartridge* cartridge);
 
     /* Writing to memory */
     void write_byte(uint8_t byte, int address);
@@ -231,30 +229,6 @@ public:
     inline std::array<uint8_t, 64>& get_bg_cram() { return bg_cram; }
     inline std::array<uint8_t, 64>& get_obj_cram() { return obj_cram; }
 
-    inline void print_bg_cram()
-    {
-        for (int i = 0; i < 7; ++i)
-        {
-            for (int j = 0; j < 8; ++j)
-            {
-                std::cout << "0x" << std::hex << +bg_cram[j + (8 * i)] << ", ";
-            }
-            std::cout << '\n';
-        }
-    }
-
-    inline void print_obj_cram()
-    {
-        for (int i = 0; i < 7; ++i)
-        {
-            for (int j = 0; j < 8; ++j)
-            {
-                std::cout << "0x" << std::hex << +obj_cram[j + (8 * i)] << ", ";
-            }
-            std::cout << '\n';
-        }
-    }
-
 private:
     Cartridge* cartridge = nullptr;
 
@@ -277,4 +251,6 @@ private:
     std::array<uint8_t, IO_REGISTERS_SIZE> io_registers{};
 
     uint8_t interrupt_enable{};
+
+    friend class Gameboy;
 };

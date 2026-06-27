@@ -77,6 +77,18 @@ void Display::handle_events()
             case SDL_SCANCODE_ESCAPE:
                 is_running = false;
                 break;
+            case SDL_SCANCODE_1:
+                SDL_SetWindowSize(window, GBResolution::WIDTH, GBResolution::HEIGHT);
+                break;
+            case SDL_SCANCODE_2:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 2, GBResolution::HEIGHT * 2);
+                break;
+            case SDL_SCANCODE_3:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 3, GBResolution::HEIGHT * 3);
+                break;
+            case SDL_SCANCODE_4:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 4, GBResolution::HEIGHT * 4);
+                break;
             }
 
         default:

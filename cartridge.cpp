@@ -50,7 +50,7 @@ std::unique_ptr<Cartridge> Cartridge::load_rom(const std::string path)
     std::ifstream file(path, std::ios::in | std::ios::binary);
     if (!file.is_open()) 
     {
-        std::cerr << "File does not exist" << std::endl;
+        std::cerr << "File does not exist: " << path << std::endl;
         return nullptr;
     }
 
@@ -483,7 +483,7 @@ switch (address & 0xF000)
     case 0xA000:
     case 0xB000:
         // Writing to External RAM
-        if (external_ram_enable)
+        if (external_ram_enable && ram.size() > 0)
             ram.at(0x2000 * ram_bank_number + (address - 0xA000)) = byte;
 
         break;
@@ -508,7 +508,7 @@ uint8_t Cartridge::mbc5_read(uint16_t address)
 
     case 0xA000:
     case 0xB000:
-        if (external_ram_enable)
+        if (external_ram_enable && ram.size() > 0)
             return ram.at(0x2000 * ram_bank_number + (address - 0xA000));
         else
             return 0xFF;
