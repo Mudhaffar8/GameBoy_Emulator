@@ -3,8 +3,9 @@
 #include <stdexcept>
 #include <iostream>
 
-Display::Display(Ppu& _ppu) : 
-    ppu(_ppu)
+Display::Display(Ppu& _ppu, Settings& _settings) : 
+    ppu(_ppu),
+    settings(_settings)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) 
     {

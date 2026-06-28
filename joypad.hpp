@@ -69,6 +69,6 @@ public:
 
 private:
     Mmu& mmu;
-
+    
     uint8_t& joypad_input;
 };

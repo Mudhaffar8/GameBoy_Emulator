@@ -7,6 +7,7 @@
 #include "joypad.hpp"
 #include "display.hpp"
 #include "timer.hpp"
+#include "settings.hpp"
 
 class Gameboy
 {
@@ -15,7 +16,9 @@ public:
 
     void run();
 
-private:
+private:    
+    Settings settings;
+
     std::unique_ptr<Cartridge> cartridge;
     Mmu mmu;
     Cpu cpu;

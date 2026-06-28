@@ -20,8 +20,9 @@ constexpr uint8_t LSB_BITMASK = 0x01;
 constexpr uint8_t LOW_NIBBLE_MASK = 0x0F;
 constexpr uint8_t HIGH_NIBBLE_MASK = 0xF0;
 
-Cpu::Cpu(Mmu& _mem) :
-    mem(_mem)
+Cpu::Cpu(Mmu& _mem, Settings& _settings) :
+    mem(_mem),
+    settings(_settings)
 {}
 
 void print_reg(uint8_t reg) { std::cout << "0x" << std::hex << +reg << ", "; }
@@ -295,7 +296,8 @@ uint32_t Cpu::execute_instruction()
 
     ticks = 4;
 
-    //std::cout << "Program Counter: " << std::hex << (PC - 1) << " Instruction: " << std::hex << +IR << '\n';
+    if (settings.debug_mode)
+        std::cout << "Program Counter: " << std::hex << (PC - 1) << " Instruction: " << std::hex << +IR << '\n';
 
     switch (IR)
     {
@@ -1227,6 +1229,7 @@ uint32_t Cpu::execute_instruction()
     case 0xF0:
     {
         uint8_t imm8 = mem.read_byte(PC++);
+
         A = mem.read_byte(IO_REGISTERS_START + imm8);
 
         ticks = 12;

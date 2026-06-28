@@ -7,11 +7,11 @@
 Gameboy::Gameboy(const std::string& rom_name) :
     cartridge(Cartridge::load_rom(rom_name)),
     mmu(cartridge.get()),
-    cpu(mmu),
+    cpu(mmu, settings),
     ppu(mmu),
     joypad(mmu),
     timer(mmu),
-    display(ppu)
+    display(ppu, settings)
 {
     // if (!save_file.empty())
     //     read_save_file(save_file);
@@ -26,7 +26,7 @@ void Gameboy::run()
 
         display.handle_events();
                 
-        while (cycles_elapsed <= GBTiming::CYCLES_PER_FRAME)
+        while (!ppu.trigger_redisplay)
         {
             const bool* state = SDL_GetKeyboardState(NULL);
             joypad.handle_inputs(state);
@@ -44,6 +44,8 @@ void Gameboy::run()
             cycles_elapsed += cycles;
         }
 
+        ppu.trigger_redisplay = false;
+
         cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
 
         display.update_screen();
@@ -51,6 +53,7 @@ void Gameboy::run()
         auto end = std::chrono::steady_clock::now();
         double diff = std::chrono::duration<double, std::milli>(end - start).count();
         
+        /// @todo change wait time depending on cycles past since last frame update
         uint32_t time = (diff <= 16.67f) ? (16.67 - diff) : 0;
         SDL_Delay(time);
     }

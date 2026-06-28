@@ -101,6 +101,8 @@ constexpr uint16_t TIMER_CONTROL = 0xFF07; // TAC
 constexpr uint16_t INTERRUPT_FLAG = 0xFF0F; 
 
 // Sound Registers would go Here
+// Audio Master Control
+constexpr uint16_t NR52 = 0xFF26; 
 
 // PPU Hardware Registers
 constexpr uint16_t LCD_CONTROL = 0xFF40; 

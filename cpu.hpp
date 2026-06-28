@@ -2,6 +2,7 @@
 
 #include "memory.hpp"
 #include "interrupts.hpp"
+#include "settings.hpp"
 
 #include <cstdint>
 
@@ -34,7 +35,7 @@ struct RegPair
 class Cpu
 {
 public:
-    explicit Cpu(Mmu& mem);
+    explicit Cpu(Mmu& mem, Settings& settings);
     
     /// @brief Fetches, decodes and executes one CPU instruction at program counter.
     /// @returns Number of T-cycles taken by the executed instruction.
@@ -66,6 +67,7 @@ public:
     bool& get_ime() { return IME; }
 private:
     Mmu& mem;
+    Settings& settings;
     
     /// @brief CPU flag bitmasks for Flags Register.
     enum class Flags : uint8_t

@@ -230,6 +230,11 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     case HDMA5: // VRAM DMA Transfer
         vram_dma_transfer(byte);
         break;
+    
+    // Lower 3 bits are read-only
+    case LCD_STATUS:
+        io_registers.at(LCD_STATUS - IO_REGISTERS_START) = byte & 0xF8;
+        break;
 
     case WRAM_BANK_SELECT:
         io_registers.at(WRAM_BANK_SELECT - IO_REGISTERS_START) = byte & 0x7;
@@ -238,6 +243,9 @@ void Mmu::write_io_reg(uint8_t byte, int address)
     case OAM_DMA_TRANSFER:
         io_registers.at(OAM_DMA_TRANSFER - IO_REGISTERS_START) = byte;
         oam_dma_transfer(byte);
+        break;
+
+    case NR52:
         break;
 
     default:
@@ -335,6 +343,9 @@ uint8_t Mmu::read_io_reg(int address)
 
             return bg_cram.at(addr);
         }
+
+    case NR52: 
+        return 0x00;
 
     case JOYPAD_INPUT:
         {

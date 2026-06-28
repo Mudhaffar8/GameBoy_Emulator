@@ -48,6 +48,8 @@ void Ppu::tick(uint32_t cycles)
     case Mode::HBlank:
         if (cycles_elapsed >= GBTiming::CYCLES_PER_SCANLINE)
         {
+            // Maybe add code for HDMA Transfer here?
+
             cycles_elapsed %= GBTiming::CYCLES_PER_SCANLINE;
             set_scanline(scanline_y + 1);
 
@@ -109,6 +111,8 @@ void Ppu::update_ppu_mode(Mode new_mode)
         break;
         
     case Mode::VBlank:
+        trigger_redisplay = true;
+
         window_internal_scanline_y = 0;
         
         GBInterrupts::request_interrupt(mmu, Interrupts::VBlank);
@@ -142,9 +146,24 @@ void Ppu::render_frame()
 
 void Ppu::render_scanline(uint8_t screen_y)
 {
-    if (!check_lcdc(LCDC::LCDPpuEnable)) 
-        return;
+    // Yay no screen tearing
+    // Still iffy but at least it works
+    if (!check_lcdc(LCDC::LCDPpuEnable))
+    {
+        std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
 
+        set_scanline(0);
+        GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
+        window_internal_scanline_y = 0;
+
+        cycles_elapsed = 0;
+        update_ppu_mode(Mode::HBlank);
+        set_lcd_status(LCDStatus::Coincidence, false);
+
+        lcd_was_on = false;
+        return;
+    } 
+    
     refresh_palettes();
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
