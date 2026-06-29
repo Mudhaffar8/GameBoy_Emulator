@@ -12,7 +12,11 @@ int main(int argc, char** argv)
 
     std::string rom_file = std::string(argv[1]);
 
-    Gameboy gameboy("./test_roms/" + rom_file);
+    std::string save_file{};
+    if (argc > 2)
+        save_file = std::string(argv[2]);
+    
+    Gameboy gameboy("./test_roms/" + rom_file, save_file);
     gameboy.run();
 
     return 0;

@@ -29,6 +29,39 @@ void Ppu::tick(uint32_t cycles)
 {
     cycles_elapsed += cycles;
 
+    /// @todo The screen should be blank on the first frame when LCD is turned ON
+    if (cycles_elapsed >= GBTiming::CYCLES_PER_FRAME)
+    {
+        trigger_redisplay = true;
+        cycles_elapsed = 0;
+    }
+    if (check_lcdc(LCDC::LCDPpuEnable) != lcd_was_on)
+    {
+        lcd_was_on = check_lcdc(LCDC::LCDPpuEnable);
+        trigger_redisplay = true;
+
+        if (!check_lcdc(LCDC::LCDPpuEnable))
+        {
+            std::cout << "LCD Turned OFF!\n";
+            std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
+
+            set_scanline(0);
+            GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
+            window_internal_scanline_y = 0;
+
+            cycles_elapsed = 0;
+            ppu_mode = Mode::OamScan;
+            lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(Mode::HBlank);
+            set_lcd_status(LCDStatus::Coincidence, false);
+
+            return;
+        }
+        else 
+            std::cout << "LCD Turned ON!\n";
+    }
+    if (!check_lcdc(LCDC::LCDPpuEnable))
+        return;
+
     switch (ppu_mode)
     {
     case Mode::OamScan:
@@ -148,22 +181,6 @@ void Ppu::render_scanline(uint8_t screen_y)
 {
     // Yay no screen tearing
     // Still iffy but at least it works
-    if (!check_lcdc(LCDC::LCDPpuEnable))
-    {
-        std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
-
-        set_scanline(0);
-        GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
-        window_internal_scanline_y = 0;
-
-        cycles_elapsed = 0;
-        update_ppu_mode(Mode::HBlank);
-        set_lcd_status(LCDStatus::Coincidence, false);
-
-        lcd_was_on = false;
-        return;
-    } 
-    
     refresh_palettes();
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());

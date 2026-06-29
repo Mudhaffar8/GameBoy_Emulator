@@ -99,7 +99,7 @@ public:
         Bank64K = 0x05
     };
 
-    const std::vector<uint8_t> rom;
+    std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
     uint8_t memory_read(uint16_t address);

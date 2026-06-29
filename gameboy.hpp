@@ -12,7 +12,7 @@
 class Gameboy
 {
 public:
-    Gameboy(const std::string& rom_name);
+    Gameboy(const std::string& rom_name, std::string save_file);
 
     void run();
 

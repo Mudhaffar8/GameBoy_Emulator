@@ -461,12 +461,14 @@ switch (address & 0xF000)
     case 0x2000:
         rom_bank_number &= 0x100;
         rom_bank_number |= byte;
+        rom_bank_number = std::min(get_num_rom_banks() - 1, (int)rom_bank_number);
         break;
 
     // Sets ROM Bank Number high bit
     case 0x3000:
         rom_bank_number &= 0xFF;
         rom_bank_number |= (byte & 1) << 8;
+        rom_bank_number = std::min(get_num_rom_banks() - 1, (int)rom_bank_number);
         break;
 
     // Set RAM Bank Number

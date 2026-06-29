@@ -5,6 +5,7 @@
 #include "settings.hpp"
 
 #include <cstdint>
+#include <thread>
 
 constexpr uint16_t CGB_AF_INIT = 0x11B8;
 constexpr uint16_t CGB_BC_INIT = 0x0000;
@@ -29,13 +30,14 @@ struct RegPair
     RegPair(uint8_t _high, uint8_t _low) : low(_low), high(_high) {}
 };
 
+
 /// @brief Emulates Game Boy (SM83) CPU.
 ///
 /// Implements instruction fetch/decode/execute and interrupt handling.
 class Cpu
 {
 public:
-    explicit Cpu(Mmu& mem, Settings& settings);
+    explicit Cpu(Mmu& mem);
     
     /// @brief Fetches, decodes and executes one CPU instruction at program counter.
     /// @returns Number of T-cycles taken by the executed instruction.
@@ -67,7 +69,6 @@ public:
     bool& get_ime() { return IME; }
 private:
     Mmu& mem;
-    Settings& settings;
     
     /// @brief CPU flag bitmasks for Flags Register.
     enum class Flags : uint8_t

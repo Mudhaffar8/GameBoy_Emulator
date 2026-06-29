@@ -72,6 +72,11 @@ void Display::handle_events()
             }
             break;
 
+        case SDL_EVENT_KEY_UP:
+            if (event.key.scancode == SDL_SCANCODE_6)
+                settings.save_stage_trigger = true;
+            break;
+
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
             {
