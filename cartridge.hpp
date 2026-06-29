@@ -104,11 +104,13 @@ public:
 
     uint8_t memory_read(uint16_t address);
     uint8_t mbc1_read(uint16_t address);
+    uint8_t mbc2_read(uint16_t address);
     uint8_t mbc3_read(uint16_t address);
     uint8_t mbc5_read(uint16_t address);
 
     void memory_write(uint8_t byte, uint16_t address);
     void mbc1_write(uint8_t byte, uint16_t address);
+    void mbc2_write(uint8_t byte, uint16_t address);
     void mbc3_write(uint8_t byte, uint16_t address);
     void mbc5_write(uint8_t byte, uint16_t address);
 

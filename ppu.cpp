@@ -179,20 +179,16 @@ void Ppu::render_frame()
 
 void Ppu::render_scanline(uint8_t screen_y)
 {
-    // Yay no screen tearing
-    // Still iffy but at least it works
     refresh_palettes();
 
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
     render_bg_scanline(screen_y);
 
-    bool window_enable = check_lcdc(LCDC::WindowEnable);
-    if (window_enable)
+    if (check_lcdc(LCDC::WindowEnable))
         render_window_scanline(screen_y);
 
-    bool obj_enable = check_lcdc(LCDC::ObjEnable);
-    if (obj_enable)
+    if (check_lcdc(LCDC::ObjEnable))
         render_sprites_scanline(screen_y);
 }
 
@@ -278,20 +274,6 @@ void Ppu::render_sprites_scanline(uint8_t screen_y)
     bool is_8x16 = check_lcdc(LCDC::ObjSize);
     int max_obj_height_idx = is_8x16 ? 15 : 7;
 
-    // int start{}, end{}, inc{};
-    // if (mmu.read_io_reg(OBJ_PRIORITY_MODE) != 0)
-    // {
-    //     start = 0;
-    //     end = oam_buffer.size();
-    //     inc = 1;
-    // }
-    // else 
-    // {
-    //     start = oam_buffer.size() - 1;
-    //     end = -1;
-    //     inc = -1;
-    // }
-
     for (auto sprite = oam_buffer.rbegin(); sprite != oam_buffer.rend(); ++sprite)
     {
         // Convert sprite position to screen coordinates
@@ -343,18 +325,6 @@ void Ppu::oam_scan(uint8_t screen_y)
         uint8_t attrib = mmu.read_byte(start_addr + 3);
 
         oam_buffer.emplace_back(y_pos, x_pos, tile_num, attrib); 
-    }
-
-    if (mmu.read_io_reg(OBJ_PRIORITY_MODE) != 0)
-    {
-        std::stable_sort(
-            oam_buffer.begin(), 
-            oam_buffer.end(), 
-            [](const GBSprite& s1, const GBSprite& s2)
-            {
-                return s1.x_pos >= s2.x_pos;
-            }
-        );
     }
 }
 
@@ -452,7 +422,8 @@ void Ppu::write_pixels(std::array<uint8_t, 8>& tile_pixels, std::array<uint8_t, 
 
         uint8_t raw_colour_idx = tile_pixels.at(bit_index);
         scanline_buffer.at(pixel_screen_x) = raw_colour_idx;
-        if (bg_priority) scanline_buffer.at(pixel_screen_x) |= static_cast<uint8_t>(bg_palette);
+        if (bg_priority) 
+            scanline_buffer.at(pixel_screen_x) |= 0x80; // How did I pass cgb-acid2 before lol
 
         uint8_t palette_colour_low = palette.at(raw_colour_idx * 2);
         uint8_t palette_colour_high = palette.at(raw_colour_idx * 2 + 1);

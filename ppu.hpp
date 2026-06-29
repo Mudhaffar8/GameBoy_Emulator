@@ -158,8 +158,6 @@ public:
 
     bool lcd_was_on = true;
     bool trigger_redisplay = false;
-    bool debug_mode = false;
-
     
     /// @brief Advance PPU by a given number of cycles
     /// @param cycles Number of CPU cycles to advance.

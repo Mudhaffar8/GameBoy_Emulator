@@ -139,6 +139,11 @@ void Cartridge::memory_write(uint8_t byte, uint16_t address)
         case Type::MBC1RamBattery:
             mbc1_write(byte, address);
             break;
+    
+        case Type::MBC2:
+        case Type::MBC2Battery:
+            mbc2_write(byte, address);
+            break; 
 
         case Type::MBC3:
         case Type::MBC3TimerBattery:
@@ -178,6 +183,10 @@ uint8_t Cartridge::memory_read(uint16_t address)
         case Type::MBC1Ram:
         case Type::MBC1RamBattery:
             return mbc1_read(address);
+
+        case Type::MBC2:
+        case Type::MBC2Battery:
+            return mbc2_read(address);
 
         case Type::MBC3:
         case Type::MBC3TimerBattery:
@@ -447,7 +456,7 @@ void Cartridge::write_to_rtc_register(uint8_t byte)
 
 void Cartridge::mbc5_write(uint8_t byte, uint16_t address)
 {
-switch (address & 0xF000)
+    switch (address & 0xF000)
     {
     case 0x0000:
     case 0x1000:
@@ -461,14 +470,12 @@ switch (address & 0xF000)
     case 0x2000:
         rom_bank_number &= 0x100;
         rom_bank_number |= byte;
-        rom_bank_number = std::min(get_num_rom_banks() - 1, (int)rom_bank_number);
         break;
 
     // Sets ROM Bank Number high bit
     case 0x3000:
         rom_bank_number &= 0xFF;
         rom_bank_number |= (byte & 1) << 8;
-        rom_bank_number = std::min(get_num_rom_banks() - 1, (int)rom_bank_number);
         break;
 
     // Set RAM Bank Number
@@ -510,6 +517,65 @@ uint8_t Cartridge::mbc5_read(uint16_t address)
     case 0xB000:
         if (external_ram_enable && ram.size() > 0)
             return ram.at(0x2000 * ram_bank_number + (address - 0xA000));
+        else
+            return 0xFF;
+    }
+
+    return 0x00;
+}
+
+void Cartridge::mbc2_write(uint8_t byte, uint16_t address)
+{
+    switch (address & 0xF000)
+    {
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+        if ((address & 0x100) == 0)
+        {
+            if ((byte & 0x80) == 0xA) 
+                external_ram_enable = true;
+            else 
+                external_ram_enable = false;
+        }
+        else
+        {
+            if (byte == 0) { rom_bank_number = 1; return; }
+            rom_bank_number = byte;
+        }
+        break;
+    
+    case 0xA000:
+    case 0xB000:
+        // Writing to External RAM
+        if (external_ram_enable)
+            ram.at(0x2000 * ram_bank_number + ((address & 0x1FF) - 0xA000)) = (byte & 0xF);
+
+        break;
+    }
+}
+
+uint8_t Cartridge::mbc2_read(uint16_t address)
+{
+    switch (address & 0xF000)
+    {
+    case 0x0000:
+    case 0x1000:
+    case 0x2000:
+    case 0x3000:
+        return rom.at(address);
+
+    case 0x4000:
+    case 0x5000:
+    case 0x6000:
+    case 0x7000:
+        return rom.at(0x4000 * rom_bank_number + (address - 0x4000));
+
+    case 0xA000:
+    case 0xB000:
+        if (external_ram_enable && ram.size() > 0)
+            return 0xF0 | ram.at(0x2000 * ram_bank_number + ((address & 0x1FF) - 0xA000));
         else
             return 0xFF;
     }
