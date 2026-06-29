@@ -28,6 +28,38 @@ Ppu::Ppu(Mmu& _mmu) :
 void Ppu::tick(uint32_t cycles)
 {
     cycles_elapsed += cycles;
+    
+    if (cycles_elapsed >= GBTiming::CYCLES_PER_FRAME)
+    {
+        trigger_redisplay = true;
+        cycles_elapsed = 0;
+    }
+    if (check_lcdc(LCDC::LCDPpuEnable) != lcd_was_on)
+    {
+        lcd_was_on = check_lcdc(LCDC::LCDPpuEnable);
+        trigger_redisplay = true;
+
+        if (!check_lcdc(LCDC::LCDPpuEnable))
+        {
+            std::cout << "LCD Turned OFF!\n";
+            std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
+
+            set_scanline(0);
+            GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
+            window_internal_scanline_y = 0;
+
+            cycles_elapsed = 0;
+            ppu_mode = Mode::OamScan;
+            lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(Mode::HBlank);
+            set_lcd_status(LCDStatus::Coincidence, false);
+
+            return;
+        }
+        else 
+            std::cout << "LCD Turned ON!\n";
+    }
+    if (!check_lcdc(LCDC::LCDPpuEnable))
+        return;
 
     switch (ppu_mode)
     {
@@ -109,6 +141,8 @@ void Ppu::update_ppu_mode(Mode new_mode)
         break;
         
     case Mode::VBlank:
+        trigger_redisplay = true;
+
         window_internal_scanline_y = 0;
         
         GBInterrupts::request_interrupt(mmu, Interrupts::VBlank);
@@ -168,39 +202,13 @@ void Ppu::render_frame()
 
 void Ppu::render_scanline(uint8_t screen_y)
 {
-    // https://www.reddit.com/r/Gameboy/comments/a1c8h0/comment/eap4f8c/
-    // When the LCD is off, the Game Boy treats it as a complete reset
-    // Scanline set to 0, enters mode 0 and LCD Clock set to 0
-    // https://www.reddit.com/r/EmuDev/comments/wn1096/super_mario_land_displays_brief_glitch_screen/
-    // SML2 and Mr. Do! both rely on this behaviour
-    // There seems to be a screen-tearing effect when I leave this code on 
-    // I'm either missing something or this needs to be placed somewhere else
-    if (!check_lcdc(LCDC::LCDPpuEnable)) 
-    {
-        // set_scanline(0);
-        // window_internal_scanline_y = 0;
-
-        // set_lcd_status(LCDStatus::Coincidence, false);
-        
-        // ppu_mode = Mode::HBlank;
-        // lcd_status = (lcd_status & 0xFC) | static_cast<uint8_t>(ppu_mode);
-        
-        // cycles_elapsed = 0;
-
-        // GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
-
-        return;
-    }
-
     std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
-    bool bg_window_enable = check_lcdc(LCDC::BgWindowEnable);
-    if (bg_window_enable)
+    if (check_lcdc(LCDC::BgWindowEnable))
     {
         render_bg_scanline(screen_y);
 
-        bool window_enable = check_lcdc(LCDC::WindowEnable);
-        if (window_enable)
+        if (check_lcdc(LCDC::WindowEnable))
             render_window_scanline(screen_y);
     }
     else
@@ -212,8 +220,7 @@ void Ppu::render_scanline(uint8_t screen_y)
         );
     }
 
-    bool obj_enable = check_lcdc(LCDC::ObjEnable);
-    if (obj_enable)
+    if (check_lcdc(LCDC::ObjEnable))
         render_sprites_scanline(screen_y);
 }
 

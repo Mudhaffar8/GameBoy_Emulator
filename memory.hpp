@@ -6,7 +6,6 @@
 #include <array>
 #include <iostream>
 
-
 /// @todo Add namespaces
 constexpr size_t MEMORY_SIZE = 0x10000;
 
@@ -133,7 +132,7 @@ constexpr uint16_t HIGH_RAM_SIZE = HIGH_RAM_END - HIGH_RAM_START + 1;
 class Mmu
 {
 public:
-    Mmu();
+    Mmu(Cartridge* cartridge);
 
     void initialize_memory();
 
@@ -175,4 +174,6 @@ private:
     std::array<uint8_t, IO_REGISTERS_SIZE> io_registers{};
 
     uint8_t interrupt_enable{};
+
+    friend class Gameboy;
 };

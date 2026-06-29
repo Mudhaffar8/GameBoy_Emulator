@@ -7,36 +7,19 @@
 #include "joypad.hpp"
 #include "display.hpp"
 #include "timer.hpp"
+#include "settings.hpp"
 
 class Gameboy
 {
 public:
-    Gameboy(const std::string& rom_name);
+    Gameboy(const std::string& rom_name, std::string save_file);
 
-    void tick(); 
+    void run();
 
-    /* Event Handling*/
-    inline void handle_events() { display.handle_events(); }
-    inline void handle_inputs() 
-    { 
-        const bool* state = SDL_GetKeyboardState(NULL);
-        joypad.handle_inputs(state); 
-    }
+private:    
+    Settings settings;
 
-    /* Display */
-    inline void update_display() { display.update_screen(); }
-
-    /* */
-    inline bool is_running() { return display.is_program_running(); }
-    inline bool is_frame_completed() 
-    { 
-        if (cycles_elapsed < GBTiming::CYCLES_PER_FRAME)
-            return false;
-        
-        cycles_elapsed %= GBTiming::CYCLES_PER_FRAME;
-        return true; 
-    }
-private:
+    std::unique_ptr<Cartridge> cartridge;
     Mmu mmu;
     Cpu cpu;
     Ppu ppu;
@@ -44,5 +27,7 @@ private:
     Timer timer;
     Display display;
 
-    uint32_t cycles_elapsed{};
+    /* Save File Handling */
+    void write_save_file();
+    void read_save_file(std::string& save_file);
 };

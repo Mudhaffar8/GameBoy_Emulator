@@ -5,7 +5,8 @@
 #include <iostream>
 #include <thread>
 
-Mmu::Mmu()
+Mmu::Mmu(Cartridge* _cartridge) : 
+    cartridge(_cartridge)
 {
     initialize_memory();
 }
@@ -134,6 +135,10 @@ void Mmu::write_io_reg(uint8_t byte, int address)
         }
         break;
     
+    case LCD_STATUS:
+        io_registers.at(LCD_STATUS - IO_REGISTERS_START) = byte & 0xF8;
+        break;
+
     case LCD_Y_COORDINATE:
         break;
 

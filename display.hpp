@@ -5,7 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include "ppu.hpp"
-
+#include "settings.hpp"
 
 /// @brief SDL3 wrapper class for window and graphics.
 class Display
@@ -14,7 +14,7 @@ public:
     /// @brief Initializes SDL resources
     /// @param ppu Provides PPU frame buffer data.
     /// @throws `std::runtime_error` If any SDL resources fail to initialize.
-    Display(Ppu& ppu);
+    Display(Ppu& ppu, Settings& settings);
 
     /// @brief Frees all SDL resources.
     ~Display();
@@ -31,6 +31,7 @@ public:
 
 private:
     Ppu& ppu;
+    Settings& settings;
 
     /* SDL resources */
     SDL_Window* window;

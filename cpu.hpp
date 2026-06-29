@@ -88,7 +88,7 @@ private:
 
     // 16-bit Registers
     uint16_t PC = PROGRAM_START; // Program Counter
-    uint16_t SP = HIGH_RAM_END; // Stack Pointer
+    uint16_t SP = DMG_SP_INIT; // Stack Pointer
 
     /* Interrupt handling Register/variables */
     uint8_t IR = 0; // 8-bit Instruction Register
@@ -185,4 +185,6 @@ private:
     // Interrupt Handling
     void check_interrupts();
     void handle_interrupt();
+
+    friend class Gameboy;
 };

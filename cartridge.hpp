@@ -5,7 +5,6 @@
 #include <iostream>
 #include <memory>
 #include <array>
-#include <variant>
 
 // TODO: Add namespaces
 
@@ -92,7 +91,7 @@ public:
         Bank64K = 0x05
     };
 
-    const std::vector<uint8_t> rom;
+    std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
     static std::unique_ptr<Cartridge> load_rom(const std::string path);
@@ -162,4 +161,6 @@ private:
     /* MBC3 Helper Methods */
     void write_to_rtc_register(uint8_t byte);
     uint8_t read_to_rtc_register();
+
+    friend class Gameboy;
 };

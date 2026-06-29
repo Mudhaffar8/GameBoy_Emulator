@@ -5,3 +5,4 @@
 *.gb
 *.gbc
 *.bin
+**/save_files/

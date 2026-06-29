@@ -3,8 +3,9 @@
 #include <stdexcept>
 #include <iostream>
 
-Display::Display(Ppu& _ppu) : 
-    ppu(_ppu)
+Display::Display(Ppu& _ppu, Settings& _settings) : 
+    ppu(_ppu),
+    settings(_settings)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) 
     {
@@ -71,11 +72,30 @@ void Display::handle_events()
             }
             break;
 
+        case SDL_EVENT_KEY_UP:
+            if (event.key.scancode == SDL_SCANCODE_6)
+                settings.save_stage_trigger = true;
+            break;
+
         case SDL_EVENT_KEY_DOWN:
             switch(event.key.scancode)
             {
             case SDL_SCANCODE_ESCAPE:
                 is_running = false;
+                break;
+            case SDL_SCANCODE_1:
+                SDL_SetWindowSize(window, GBResolution::WIDTH, GBResolution::HEIGHT);
+                break;
+            case SDL_SCANCODE_2:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 2, GBResolution::HEIGHT * 2);
+                break;
+            case SDL_SCANCODE_3:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 3, GBResolution::HEIGHT * 3);
+                break;
+            case SDL_SCANCODE_4:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 4, GBResolution::HEIGHT * 4);
+                break;
+            case SDL_SCANCODE_6:
                 break;
             }
 

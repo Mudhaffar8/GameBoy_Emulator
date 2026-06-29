@@ -128,8 +128,9 @@ public:
     /// @todo Make this private.
     std::array<uint32_t, GBResolution::DIMENSIONS> frame_buffer{};
 
-    bool debug_mode = false;
-    
+    bool trigger_redisplay = false;
+    bool lcd_was_on = true;
+
     /// @brief Advance PPU by a given number of cycles
     /// @param cycles Number of CPU cycles to advance.
     void tick(uint32_t cycles);
@@ -232,4 +233,6 @@ private:
 
     inline void set_scanline(uint8_t new_scanline);
     inline void update_coincidence_flag();
+
+    friend class Gameboy;
 };

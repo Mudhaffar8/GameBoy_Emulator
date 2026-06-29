@@ -14,11 +14,11 @@ enum class Interrupts : uint8_t
     JoyPad = 0x10
 };
 
-namespace GBInterrupts
+namespace GBInterrupts  
 {
     inline void request_interrupt(Mmu& mem, Interrupts interrupt)
     {
-        uint8_t& interrupt_flag = mem.read_io_reg(INTERRUPT_FLAG);
+        uint8_t& interrupt_flag = mem.get_interrupt_flag();
         interrupt_flag |= static_cast<uint8_t>(interrupt);
     }
 
@@ -35,7 +35,8 @@ namespace GBInterrupts
     }
 
     /* Checking Interrupts */
-    inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt) // Checks if an interrupt is both requested and enabled.
+    // Checks if an interrupt is both requested and enabled
+    inline bool is_interrupt_queued(Mmu& mem, Interrupts interrupt)
     {
         return mem.get_interrupt_flag() & 
             mem.get_interrupt_enable() & 
