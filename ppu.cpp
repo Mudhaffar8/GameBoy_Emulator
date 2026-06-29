@@ -42,8 +42,7 @@ void Ppu::tick(uint32_t cycles)
 
         if (!check_lcdc(LCDC::LCDPpuEnable))
         {
-            std::cout << "LCD Turned OFF!\n";
-            std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00);
+            std::fill(frame_buffer.begin(), frame_buffer.end(), GBColours::COLOUR_00); 
 
             set_scanline(0);
             GBInterrupts::unset_interrupt(mmu, Interrupts::LCD);
@@ -56,8 +55,7 @@ void Ppu::tick(uint32_t cycles)
 
             return;
         }
-        else 
-            std::cout << "LCD Turned ON!\n";
+
     }
     if (!check_lcdc(LCDC::LCDPpuEnable))
         return;
@@ -180,8 +178,6 @@ void Ppu::render_frame()
 void Ppu::render_scanline(uint8_t screen_y)
 {
     refresh_palettes();
-
-    std::memset(scanline_buffer.data(), 0x00, scanline_buffer.size());
 
     render_bg_scanline(screen_y);
 

@@ -66,13 +66,13 @@ void Mmu::vram_dma_transfer(uint8_t vram_dma_len_mode)
     // and common emulation (& ROM) bugs
 
     // HBlank DMA = 0x10 bytes every HBlank
-    std::cout << "VRAM Data Transfer!\n";
+    //std::cout << "VRAM Data Transfer!\n";
     bool is_hblank_dma = (vram_dma_len_mode & 0x80) != 0;
     int data_length = ((vram_dma_len_mode & 0x7F) + 1) * 0x10;
     // std::cout << "Data Length Before: " << data_length << '\n';
 
     // std::cout << "Data Length: " << std::hex << data_length << '\n';
-    std::cout << "HBlank DMA? " << is_hblank_dma << '\n';
+    //std::cout << "HBlank DMA? " << is_hblank_dma << '\n';
 
     uint8_t vram_dma_source_high = io_registers.at(HDMA1 - IO_REGISTERS_START);
     uint8_t vram_dma_source_low = io_registers.at(HDMA2 - IO_REGISTERS_START);

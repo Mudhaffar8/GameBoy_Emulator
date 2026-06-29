@@ -73,7 +73,7 @@ void Display::handle_events()
             break;
 
         case SDL_EVENT_KEY_UP:
-            if (event.key.scancode == SDL_SCANCODE_6)
+            if (event.key.scancode == SDL_SCANCODE_9)
                 settings.save_stage_trigger = true;
             break;
 
@@ -94,6 +94,9 @@ void Display::handle_events()
                 break;
             case SDL_SCANCODE_4:
                 SDL_SetWindowSize(window, GBResolution::WIDTH * 4, GBResolution::HEIGHT * 4);
+                break;
+            case SDL_SCANCODE_5:
+                SDL_SetWindowSize(window, GBResolution::WIDTH * 5, GBResolution::HEIGHT * 5);
                 break;
             }
 

@@ -127,6 +127,15 @@ void Gameboy::read_save_file(std::string& file_name)
         return;
     }
 
+    save_file.seekg(CGB_FLAG);
+    uint8_t cgb_flag = save_file.get();
+    
+    if (cgb_flag != 0x80 && cgb_flag != 0xC0)
+    {
+        std::cerr << "Not a CGB compatible save file!\n";
+        return;
+    }
+
     for (int i = TITLE_START; i <= TITLE_END; ++i)
     {
         save_file.seekg(i);
